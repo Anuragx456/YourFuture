@@ -82,7 +82,7 @@ export default function CustomTabBar({
           const onLongPress = () => {
             navigation.emit({ type: 'tabLongPress', target: route.key });
           };
-
+          
           return (
             <TouchableOpacity
               key={route.key}
@@ -104,8 +104,8 @@ export default function CustomTabBar({
               }}
             >
               {isFocused && options.tabBarIcon ? (
-                <View style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
-                  {options.tabBarIcon({ focused: true, color: '#FFFFFF', size: 16 })}
+                <View style={{ width: 25, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+                  {options.tabBarIcon({ focused: true, color: activeLabel, size: 18 })}
                 </View>
               ) : null}
 
