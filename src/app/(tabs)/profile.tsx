@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, Modal, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, Modal, TextInput, useWindowDimensions, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/userStore';
 import { useHabitStore } from '../../store/habitStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { COLORS } from '../../constants/colors';
+import { COLORS, tintedDark } from '../../constants/colors';
 
 const PRESET_COLORS = [
   { name: 'Violet', primary: '#8b5cf6' },
@@ -43,7 +43,6 @@ export default function ProfileScreen() {
 
   const isDark = profile.theme === 'dark';
   const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
-  const accent = isDark ? '#f8fafc' : (profile.accentColor || COLORS.accent);
   const primaryText = isDark ? '#090514' : '#ffffff';
   const pad = Math.max(20, width * 0.06);
   const [isGoalsModalVisible, setIsGoalsModalVisible] = useState(false);
@@ -67,7 +66,7 @@ export default function ProfileScreen() {
 
   const toggleTempGoal = (goal: string) => {
     if (tempSelectedGoals.includes(goal)) {
-      setTempSelectedGoals(tempSelectedGoals.filter(g => g !== goal));
+      setTempSelectedGoals(tempSelectedGoals.filter((g) => g !== goal));
     } else if (tempSelectedGoals.length < 3) {
       setTempSelectedGoals([...tempSelectedGoals, goal]);
     }
@@ -89,122 +88,134 @@ export default function ProfileScreen() {
       'This will permanently delete all local data.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Reset', 
-          style: 'destructive', 
+        {
+          text: 'Reset',
+          style: 'destructive',
           onPress: () => {
             clearData();
             clearHabits();
             router.replace('/onboarding');
-          } 
+          }
         },
       ]
     );
   };
 
-  const bg = isDark ? COLORS.background.dark : COLORS.background.light;
-  const cardBg = isDark ? COLORS.card.dark : '#ffffff';
+  const accentBase = profile.primaryColor || COLORS.primary;
+  const bg = isDark ? tintedDark(accentBase, 0.05) : COLORS.background.light;
+  const cardBg = isDark ? tintedDark(accentBase, 0.12) : '#ffffff';
   const borderCol = isDark ? COLORS.border.dark : COLORS.border.light;
   const textColor = isDark ? 'white' : COLORS.text.light;
   const labelColor = isDark ? COLORS.text.mutedDark : COLORS.text.mutedLight;
+  const colorBtnWidth = (width - pad * 2 - 32 - 36) / 4;
+
+  const screenStyle = [styles.screen, { backgroundColor: bg }];
+  const scrollContent = [styles.scrollContent, { paddingHorizontal: pad }];
+  const profileCardStyle = [styles.profileCard, { backgroundColor: cardBg, borderColor: borderCol }];
+  const avatarStyle = [styles.avatar, { backgroundColor: primary }];
+  const statsRowStyle = [
+    styles.statsRow,
+    { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc', borderColor: borderCol },
+  ];
+  const settingsGroupStyle = [styles.settingsGroup, { backgroundColor: cardBg, borderColor: borderCol }];
+  const accentGridStyle = [styles.accentGrid, { backgroundColor: cardBg, borderColor: borderCol }];
+  const sheetStyle = [
+    styles.sheet,
+    { backgroundColor: isDark ? '#120b24' : '#ffffff', paddingHorizontal: pad },
+  ];
+  const handleStyle = [styles.handle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }];
+  const closeBtnStyle = [styles.closeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }];
+  const goalChipStyle = [styles.goalChip, { backgroundColor: cardBg, borderColor: borderCol }];
+  const struggleItemStyle = [styles.struggleItem, { backgroundColor: cardBg, borderColor: borderCol }];
+  const editLinkStyle = [styles.editLink, { color: primary }];
+  const goalChipTextStyle = [styles.goalChipText, { color: isDark ? '#cbd5e1' : '#475569' }];
+  const saveBtnStyle = [styles.saveBtn, { backgroundColor: primary }];
+  const modalInputStyle = [
+    styles.modalInput,
+    { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', borderColor: borderCol, color: textColor },
+  ];
+
+  const goalItemStyle = (selected: boolean): object[] => [
+    styles.goalItem,
+    {
+      backgroundColor: selected ? primary : (isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc'),
+      borderColor: selected ? 'transparent' : borderCol,
+    },
+  ];
+
+  const colorSwatchStyle = (isSelected: boolean, preset: string): object[] => [
+    styles.colorSwatch,
+    {
+      backgroundColor: isSelected ? primary : preset,
+      borderWidth: isSelected ? 3 : 0,
+      borderColor: isDark ? '#120b24' : '#ffffff',
+    },
+  ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bg }} edges={['top']}>
-      <ScrollView 
-        contentContainerStyle={{ paddingHorizontal: pad, paddingTop: 16, paddingBottom: 130 }}
+    <SafeAreaView style={screenStyle} edges={['top']}>
+      <ScrollView
+        contentContainerStyle={scrollContent}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={{ fontSize: 28, fontWeight: '700', color: textColor, letterSpacing: -0.5, marginBottom: 24 }}>Settings</Text>
+        <Text style={[styles.settingsTitle, { color: textColor }]}>Settings</Text>
 
         {/* Profile Card */}
-        <View style={{
-          backgroundColor: cardBg,
-          borderRadius: 24,
-          borderCurve: 'continuous',
-          padding: 24,
-          marginBottom: 28,
-          alignItems: 'center',
-          borderWidth: 1,
-          borderColor: borderCol,
-        }}>
-          <View style={{
-            width: 64,
-            height: 64,
-            borderRadius: 20,
-            backgroundColor: primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 16,
-          }}>
-            <Text style={{ color: primaryText, fontSize: 26, fontWeight: '700' }}>{profile.name?.[0]?.toUpperCase() || 'U'}</Text>
+        <View style={profileCardStyle}>
+          <View style={avatarStyle}>
+            <Text style={[styles.avatarText, { color: primaryText }]}>{profile.name?.[0]?.toUpperCase() || 'U'}</Text>
           </View>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: textColor }}>{profile.name || 'Explorer'}</Text>
-          <Text style={{ fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, fontSize: 11, color: labelColor, marginTop: 4 }}>
+          <Text style={[styles.profileName, { color: textColor }]}>{profile.name || 'Explorer'}</Text>
+          <Text style={[styles.profileLevel, { color: labelColor }]}>
             Level {Math.max(1, Math.floor(totalCompletions / 10))} Explorer
           </Text>
-          
-          <View style={{
-            flexDirection: 'row',
-            marginTop: 20,
-            padding: 16,
-            borderRadius: 16,
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
-            width: '100%',
-            borderWidth: 1,
-            borderColor: borderCol,
-          }}>
-            <View style={{ flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: borderCol }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: textColor }}>{totalHabits}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: labelColor, marginTop: 2 }}>Systems</Text>
+
+          <View style={statsRowStyle}>
+            <View style={[styles.statItem, { borderRightWidth: 1, borderRightColor: borderCol }]}>
+              <Text style={[styles.statValue, { color: textColor }]}>{totalHabits}</Text>
+              <Text style={[styles.statLabel, { color: labelColor }]}>Systems</Text>
             </View>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: textColor }}>{totalCompletions}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: labelColor, marginTop: 2 }}>Actions</Text>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: textColor }]}>{totalCompletions}</Text>
+              <Text style={[styles.statLabel, { color: labelColor }]}>Actions</Text>
             </View>
           </View>
         </View>
 
         {/* Goals Section */}
-        <View style={{ marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: textColor }}>Core Goals</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Core Goals</Text>
             <TouchableOpacity onPress={openGoalsModal} activeOpacity={0.7}>
-              <Text style={{ color: primary, fontWeight: '600', fontSize: 14 }}>Edit</Text>
+              <Text style={editLinkStyle}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <View style={styles.chipRow}>
             {profile.goals.map((goal, index) => (
-              <View key={index} style={{
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 10,
-                backgroundColor: cardBg,
-                borderWidth: 1,
-                borderColor: borderCol,
-              }}>
-                <Text style={{ fontWeight: '600', fontSize: 13, color: isDark ? '#cbd5e1' : '#475569' }} selectable>{goal}</Text>
+              <View key={index} style={goalChipStyle}>
+                <Text style={goalChipTextStyle} selectable>{goal}</Text>
               </View>
             ))}
           </View>
         </View>
 
         {/* Struggles Section */}
-        <View style={{ marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: textColor }}>Struggles</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Struggles</Text>
             <TouchableOpacity onPress={openStrugglesModal} activeOpacity={0.7}>
-              <Text style={{ color: primary, fontWeight: '600', fontSize: 14 }}>Edit</Text>
+              <Text style={editLinkStyle}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ gap: 8 }}>
+          <View style={styles.struggleList}>
             {BAD_HABITS.map((habit) => {
               const value = profile.badHabits[habit.id];
               if (!value) return null;
               return (
-                <View key={habit.id} style={{ padding: 14, borderRadius: 14, backgroundColor: cardBg, borderWidth: 1, borderColor: borderCol }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, color: labelColor, marginBottom: 2 }}>{habit.label}</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: textColor }} selectable>{value}</Text>
+                <View key={habit.id} style={struggleItemStyle}>
+                  <Text style={[styles.struggleLabel, { color: labelColor }]}>{habit.label}</Text>
+                  <Text style={[styles.struggleValue, { color: textColor }]} selectable>{value}</Text>
                 </View>
               );
             })}
@@ -212,56 +223,40 @@ export default function ProfileScreen() {
         </View>
 
         {/* Settings Group */}
-        <View style={{
-          borderRadius: 20,
-          backgroundColor: cardBg,
-          borderWidth: 1,
-          borderColor: borderCol,
-          overflow: 'hidden',
-          marginBottom: 28,
-        }}>
-          <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: borderCol, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(129, 140, 248, 0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+        <View style={settingsGroupStyle}>
+          <View style={[styles.settingsRow, { borderBottomWidth: 1, borderBottomColor: borderCol }]}>
+            <View style={styles.settingsRowContent}>
+              <View style={styles.darkModeIconBox}>
                 <Ionicons name="moon" size={18} color="#818cf8" />
               </View>
-              <Text style={{ fontWeight: '600', fontSize: 15, color: textColor }}>Dark Mode</Text>
+              <Text style={[styles.settingsLabel, { color: textColor }]}>Dark Mode</Text>
             </View>
-            <Switch 
-              value={isDark} 
+            <Switch
+              value={isDark}
               onValueChange={(val) => setTheme(val ? 'dark' : 'light')}
               trackColor={{ false: '#cbd5e1', true: primary }}
               thumbColor="white"
             />
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleClearData}
             activeOpacity={0.7}
-            style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+            style={styles.settingsRow}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(244, 63, 94, 0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+            <View style={styles.settingsRowContent}>
+              <View style={styles.resetIconBox}>
                 <Ionicons name="power" size={18} color="#f43f5e" />
               </View>
-              <Text style={{ fontWeight: '600', fontSize: 15, color: '#f43f5e' }}>Factory Reset</Text>
+              <Text style={styles.dangerLabel}>Factory Reset</Text>
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Accent Color Section */}
-        <View style={{ marginBottom: 28 }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: textColor, marginBottom: 12 }}>Accent Color</Text>
-          <View style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 12,
-            backgroundColor: cardBg,
-            borderRadius: 20,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: borderCol,
-          }}>
+        <View style={styles.accentSection}>
+          <Text style={[styles.accentTitle, { color: textColor }]}>Accent Color</Text>
+          <View style={accentGridStyle}>
             {PRESET_COLORS.map((color) => {
               const isSelected = primary === color.primary;
               return (
@@ -269,57 +264,41 @@ export default function ProfileScreen() {
                   key={color.name}
                   onPress={() => setPrimaryColor(color.primary)}
                   activeOpacity={0.7}
-                  style={{ alignItems: 'center', width: (width - pad * 2 - 32 - 36) / 4 }}
+                  style={[styles.colorBtn, { width: colorBtnWidth }]}
                 >
-                  <View style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: color.primary,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: isSelected ? 3 : 0,
-                    borderColor: isDark ? '#120b24' : '#ffffff',
-                  }}>
+                  <View style={colorSwatchStyle(isSelected, color.primary)}>
                     {isSelected && (
                       <Ionicons name="checkmark" size={20} color="white" />
                     )}
                   </View>
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: labelColor, marginTop: 6 }}>{color.name}</Text>
+                  <Text style={[styles.colorName, { color: labelColor }]}>{color.name}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
 
-        <View style={{ alignItems: 'center', paddingBottom: 36 }}>
-          <Text style={{ fontWeight: '600', fontSize: 11, color: labelColor, textTransform: 'uppercase', letterSpacing: 2 }}>FutureMe</Text>
-          <Text style={{ fontSize: 10, marginTop: 4, color: labelColor }}>One choice at a time.</Text>
+        <View style={styles.footer}>
+          <Text style={[styles.footerBrand, { color: labelColor }]}>FutureMe</Text>
+          <Text style={[styles.footerTagline, { color: labelColor }]}>One choice at a time.</Text>
         </View>
       </ScrollView>
 
       {/* Goals Modal */}
       <Modal visible={isGoalsModalVisible} animationType="slide" transparent>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <View style={{
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            backgroundColor: isDark ? '#120b24' : '#ffffff',
-            paddingHorizontal: pad,
-            paddingTop: 8,
-            height: '70%',
-          }}>
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', alignSelf: 'center', marginTop: 8, marginBottom: 16 }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: textColor }}>Edit Goals</Text>
-              <TouchableOpacity onPress={() => setIsGoalsModalVisible(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={styles.overlay}>
+          <View style={sheetStyle}>
+            <View style={handleStyle} />
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Edit Goals</Text>
+              <TouchableOpacity onPress={() => setIsGoalsModalVisible(false)} style={closeBtnStyle}>
                 <Ionicons name="close" size={16} color={labelColor} />
               </TouchableOpacity>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: labelColor, marginBottom: 20 }}>Select up to 3 priority areas.</Text>
-            
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 }}>
+            <Text style={[styles.modalSubtitle, { color: labelColor }]}>Select up to 3 priority areas.</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+              <View style={styles.goalGrid}>
                 {GOAL_OPTIONS.map((item) => {
                   const isSelected = tempSelectedGoals.includes(item.label);
                   return (
@@ -327,21 +306,11 @@ export default function ProfileScreen() {
                       key={item.label}
                       onPress={() => toggleTempGoal(item.label)}
                       activeOpacity={0.8}
-                      style={{ width: '48%', marginBottom: 12 }}
+                      style={styles.goalItemWrap}
                     >
-                      <View style={{
-                        paddingVertical: 16,
-                        paddingHorizontal: 10,
-                        borderRadius: 16,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: 90,
-                        backgroundColor: isSelected ? primary : (isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc'),
-                        borderWidth: 1,
-                        borderColor: isSelected ? 'transparent' : borderCol,
-                      }}>
+                      <View style={goalItemStyle(isSelected)}>
                         <Ionicons name={item.icon} size={24} color={isSelected ? 'white' : labelColor} />
-                        <Text style={{ textAlign: 'center', fontWeight: '600', marginTop: 8, fontSize: 12, color: isSelected ? 'white' : labelColor }}>
+                        <Text style={[styles.goalItemLabel, { color: isSelected ? 'white' : labelColor }]}>
                           {item.label.split(' & ')[0]}
                         </Text>
                       </View>
@@ -350,8 +319,8 @@ export default function ProfileScreen() {
                 })}
               </View>
               <TouchableOpacity onPress={saveGoals} activeOpacity={0.9}>
-                <View style={{ backgroundColor: primary, paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}>
-                  <Text style={{ color: primaryText, fontWeight: '600', fontSize: 15 }}>Save Goals</Text>
+                <View style={saveBtnStyle}>
+                  <Text style={[styles.saveBtnText, { color: primaryText }]}>Save Goals</Text>
                 </View>
               </TouchableOpacity>
             </ScrollView>
@@ -361,50 +330,33 @@ export default function ProfileScreen() {
 
       {/* Struggles Modal */}
       <Modal visible={isStrugglesModalVisible} animationType="slide" transparent>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <View style={{
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            backgroundColor: isDark ? '#120b24' : '#ffffff',
-            paddingHorizontal: pad,
-            paddingTop: 8,
-            height: '70%',
-          }}>
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', alignSelf: 'center', marginTop: 8, marginBottom: 16 }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: textColor }}>Edit Struggles</Text>
-              <TouchableOpacity onPress={() => setIsStrugglesModalVisible(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={styles.overlay}>
+          <View style={sheetStyle}>
+            <View style={handleStyle} />
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Edit Struggles</Text>
+              <TouchableOpacity onPress={() => setIsStrugglesModalVisible(false)} style={closeBtnStyle}>
                 <Ionicons name="close" size={16} color={labelColor} />
               </TouchableOpacity>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: labelColor, marginBottom: 20 }}>Update your ongoing challenges.</Text>
-            
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <Text style={[styles.modalSubtitle, { color: labelColor }]}>Update your ongoing challenges.</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
               {BAD_HABITS.map((habit) => (
-                <View key={habit.id} style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, color: labelColor, marginBottom: 6 }}>{habit.label}</Text>
+                <View key={habit.id} style={styles.struggleField}>
+                  <Text style={[styles.struggleFieldLabel, { color: labelColor }]}>{habit.label}</Text>
                   <TextInput
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 12,
-                      borderRadius: 12,
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-                      borderWidth: 1,
-                      borderColor: borderCol,
-                      fontSize: 15,
-                      fontWeight: '500',
-                      color: textColor,
-                    }}
+                    style={modalInputStyle}
                     placeholder={habit.placeholder}
-                    placeholderTextColor={isDark ? "#475569" : "#94a3b8"}
+                    placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
                     value={tempBadHabits[habit.id] || ''}
-                    onChangeText={(val) => setTempBadHabits(prev => ({ ...prev, [habit.id]: val }))}
+                    onChangeText={(val) => setTempBadHabits((prev) => ({ ...prev, [habit.id]: val }))}
                   />
                 </View>
               ))}
               <TouchableOpacity onPress={saveStruggles} activeOpacity={0.9}>
-                <View style={{ backgroundColor: primary, paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}>
-                  <Text style={{ color: primaryText, fontWeight: '600', fontSize: 15 }}>Save Struggles</Text>
+                <View style={saveBtnStyle}>
+                  <Text style={[styles.saveBtnText, { color: primaryText }]}>Save Struggles</Text>
                 </View>
               </TouchableOpacity>
             </ScrollView>
@@ -414,3 +366,306 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 16,
+    paddingBottom: 130,
+  },
+  settingsTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 24,
+  },
+  profileCard: {
+    borderRadius: 24,
+    borderCurve: 'continuous',
+    padding: 24,
+    marginBottom: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  avatarText: {
+    fontSize: 26,
+    fontWeight: '700',
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  profileLevel: {
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontSize: 11,
+    marginTop: 4,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 16,
+    width: '100%',
+    borderWidth: 1,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  editLink: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  goalChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  goalChipText: {
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  struggleList: {
+    gap: 8,
+  },
+  struggleItem: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  struggleLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  struggleValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  settingsGroup: {
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: 28,
+  },
+  settingsRow: {
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  settingsRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  darkModeIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(129, 140, 248, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  resetIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(244, 63, 94, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  settingsLabel: {
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  dangerLabel: {
+    fontWeight: '600',
+    fontSize: 15,
+    color: '#f43f5e',
+  },
+  accentSection: {
+    marginBottom: 28,
+  },
+  accentTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  accentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+  },
+  colorBtn: {
+    alignItems: 'center',
+  },
+  colorSwatch: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorName: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingBottom: 36,
+  },
+  footerBrand: {
+    fontWeight: '600',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  footerTagline: {
+    fontSize: 10,
+    marginTop: 4,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  sheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+    height: '70%',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 20,
+  },
+  modalScroll: {
+    paddingBottom: 40,
+  },
+  goalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  goalItemWrap: {
+    width: '48%',
+    marginBottom: 12,
+  },
+  goalItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 90,
+    borderWidth: 1,
+  },
+  goalItemLabel: {
+    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: 8,
+    fontSize: 12,
+  },
+  saveBtn: {
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  struggleField: {
+    marginBottom: 16,
+  },
+  struggleFieldLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  modalInput: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+});

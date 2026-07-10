@@ -16,7 +16,7 @@ export default function RootLayout() {
     } else if (profile.onboarded && segments[0] === 'onboarding') {
       router.replace('/(tabs)');
     }
-  }, [profile.onboarded, segments]);
+  }, [profile.onboarded, segments, router]);
 
   return (
     <>

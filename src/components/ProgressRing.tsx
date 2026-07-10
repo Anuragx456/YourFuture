@@ -17,8 +17,7 @@ export default function ProgressRing({ progress, size = 60, strokeWidth = 8, col
   const { profile } = useUserStore();
   const isDark = profile.theme === 'dark';
   const primary = color || (isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary));
-  const textMuted = isDark ? COLORS.text.mutedDark : COLORS.text.mutedLight;
-  
+
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   
@@ -29,14 +28,16 @@ export default function ProgressRing({ progress, size = 60, strokeWidth = 8, col
       duration: 800,
       easing: Easing.out(Easing.cubic)
     });
-  }, [progress]);
+  }, [progress, animatedProgress]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circumference * (1 - animatedProgress.value),
   }));
 
+  const svgStyle = { transform: [{ rotate: '-90deg' as const }] };
+
   return (
-    <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
+    <Svg width={size} height={size} style={svgStyle}>
       <Circle
         cx={size / 2}
         cy={size / 2}
