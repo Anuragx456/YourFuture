@@ -114,7 +114,15 @@ export default function HabitCard({ habit, onDelete }: HabitCardProps) {
           </View>
 
           <Animated.View style={ringStyle}>
-            <ProgressRing progress={progress} size={48} strokeWidth={5} color={primary} />
+            <ProgressRing
+              progress={progress}
+              size={48}
+              strokeWidth={5}
+              color={primary}
+              label={`${todayProgress}/${habit.targetValue}`}
+              labelColor={textColorMain}
+              labelSize={12}
+            />
           </Animated.View>
         </View>
       </TouchableOpacity>

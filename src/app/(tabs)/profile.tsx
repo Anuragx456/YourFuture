@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, Modal, TextInput, useWindowDimensions, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, Modal, TextInput, useWindowDimensions, StyleSheet, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/userStore';
 import { useHabitStore } from '../../store/habitStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, tintedDark } from '../../constants/colors';
+import { getApiKey, saveApiKey, deleteApiKey } from '../../lib/secureStore';
 
 const PRESET_COLORS = [
   { name: 'Violet', primary: '#8b5cf6' },
@@ -35,11 +36,27 @@ const BAD_HABITS = [
   { id: 'smoking', label: 'Smoking / Vaping', placeholder: 'Yes/No or frequency' },
 ];
 
+const GEMINI_MODELS = [
+  { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite', desc: 'Lightweight, high volume' },
+  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', desc: 'Fast and balanced (default)' },
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Stable, fast, capable' },
+  { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', desc: 'Cheapest, high volume' },
+];
+
 export default function ProfileScreen() {
   const { profile, setTheme, setProfile, setPrimaryColor, clearData } = useUserStore();
   const { habits, clearHabits } = useHabitStore();
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const params = useLocalSearchParams();
+
+  useEffect(() => {
+    if (params.openGemini === 'true') {
+      openGeminiModal();
+      router.setParams({ openGemini: undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.openGemini]);
 
   const isDark = profile.theme === 'dark';
   const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
@@ -47,12 +64,43 @@ export default function ProfileScreen() {
   const pad = Math.max(20, width * 0.06);
   const [isGoalsModalVisible, setIsGoalsModalVisible] = useState(false);
   const [isStrugglesModalVisible, setIsStrugglesModalVisible] = useState(false);
+  const [isGeminiModalVisible, setIsGeminiModalVisible] = useState(false);
 
   const [tempSelectedGoals, setTempSelectedGoals] = useState<string[]>([]);
   const [tempBadHabits, setTempBadHabits] = useState<Record<string, string>>({});
+  const [apiKey, setApiKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [tempModel, setTempModel] = useState(profile.geminiModel);
 
   const totalCompletions = habits.reduce((acc, h) => acc + Object.keys(h.completions).length, 0);
   const totalHabits = habits.length;
+
+  useEffect(() => {
+    getApiKey().then(setApiKey);
+  }, []);
+
+  const openGeminiModal = () => {
+    setTempModel(profile.geminiModel);
+    getApiKey().then(setApiKey);
+    setShowKey(false);
+    setIsGeminiModalVisible(true);
+  };
+
+  const saveGemini = async () => {
+    const trimmed = apiKey.trim();
+    if (trimmed) {
+      await saveApiKey(trimmed);
+    } else {
+      await deleteApiKey();
+    }
+    setProfile({ geminiModel: tempModel });
+    setIsGeminiModalVisible(false);
+  };
+
+  const clearGeminiKey = async () => {
+    await deleteApiKey();
+    setApiKey('');
+  };
 
   const openGoalsModal = () => {
     setTempSelectedGoals([...profile.goals]);
@@ -121,7 +169,7 @@ export default function ProfileScreen() {
   const accentGridStyle = [styles.accentGrid, { backgroundColor: cardBg, borderColor: borderCol }];
   const sheetStyle = [
     styles.sheet,
-    { backgroundColor: isDark ? '#120b24' : '#ffffff', paddingHorizontal: pad },
+    { backgroundColor: isDark ? '#000000' : '#ffffff', paddingHorizontal: pad },
   ];
   const handleStyle = [styles.handle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }];
   const closeBtnStyle = [styles.closeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }];
@@ -253,6 +301,28 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Gemini AI Section */}
+        <View style={settingsGroupStyle}>
+          <TouchableOpacity
+            onPress={openGeminiModal}
+            activeOpacity={0.7}
+            style={[styles.settingsRow, { borderBottomWidth: 1, borderBottomColor: borderCol }]}
+          >
+            <View style={styles.settingsRowContent}>
+              <View style={styles.geminiIconBox}>
+                <Ionicons name="sparkles" size={18} color="#a78bfa" />
+              </View>
+              <View>
+                <Text style={[styles.settingsLabel, { color: textColor }]}>Gemini AI</Text>
+                <Text style={[styles.settingsSub, { color: labelColor }]}>
+                  {apiKey ? 'API key set' : 'Not configured'} · {profile.geminiModel}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={labelColor} />
+          </TouchableOpacity>
+        </View>
+
         {/* Accent Color Section */}
         <View style={styles.accentSection}>
           <Text style={[styles.accentTitle, { color: textColor }]}>Accent Color</Text>
@@ -357,6 +427,98 @@ export default function ProfileScreen() {
               <TouchableOpacity onPress={saveStruggles} activeOpacity={0.9}>
                 <View style={saveBtnStyle}>
                   <Text style={[styles.saveBtnText, { color: primaryText }]}>Save Struggles</Text>
+                </View>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Gemini AI Modal */}
+      <Modal visible={isGeminiModalVisible} animationType="slide" transparent>
+        <View style={styles.overlay}>
+          <View style={sheetStyle}>
+            <View style={handleStyle} />
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Gemini AI</Text>
+              <TouchableOpacity onPress={() => setIsGeminiModalVisible(false)} style={closeBtnStyle}>
+                <Ionicons name="close" size={16} color={labelColor} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: labelColor }]}>
+              Add your API key and choose a model. Stored locally on this device.
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+              <Text style={styles.geminiFieldLabel}>API Key</Text>
+              <View style={styles.keyInputWrap}>
+                <TextInput
+                  style={[modalInputStyle, styles.keyInput]}
+                  placeholder="Paste your Gemini API key"
+                  placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                  value={apiKey}
+                  secureTextEntry={!showKey}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onChangeText={setApiKey}
+                />
+                <TouchableOpacity onPress={() => setShowKey((v) => !v)} style={styles.keyEye}>
+                  <Ionicons name={showKey ? 'eye-off' : 'eye'} size={18} color={labelColor} />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                onPress={() => Linking.openURL('https://aistudio.google.com/api-keys')}
+                activeOpacity={0.7}
+                style={styles.keyLink}
+              >
+                <Ionicons name="open-outline" size={14} color={primary} />
+                <Text style={[styles.keyLinkText, { color: primary }]}>
+                  Get a Gemini API key
+                </Text>
+              </TouchableOpacity>
+              {apiKey ? (
+                <TouchableOpacity onPress={clearGeminiKey} activeOpacity={0.7} style={styles.clearKeyLink}>
+                  <Text style={[styles.clearKeyText, { color: '#f43f5e' }]}>Remove key</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <Text style={[styles.geminiFieldLabel, { marginTop: 20 }]}>Model</Text>
+              <View style={styles.modelList}>
+                {GEMINI_MODELS.map((model) => {
+                  const isSelected = tempModel === model.id;
+                  return (
+                    <TouchableOpacity
+                      key={model.id}
+                      onPress={() => setTempModel(model.id)}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.modelItem,
+                        {
+                          backgroundColor: isSelected
+                            ? (isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9')
+                            : (isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc'),
+                          borderColor: isSelected ? accentBase : borderCol,
+                          borderWidth: isSelected ? 2 : 1,
+                        },
+                      ]}
+                    >
+                      <View style={styles.modelTextWrap}>
+                        <Text style={[styles.modelLabel, { color: isSelected ? accentBase : textColor }]}>
+                          {model.label}
+                        </Text>
+                        <Text style={[styles.modelDesc, { color: labelColor }]}>
+                          {model.desc}
+                        </Text>
+                      </View>
+                      {isSelected && <Ionicons name="checkmark-circle" size={20} color={accentBase} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <TouchableOpacity onPress={saveGemini} activeOpacity={0.9} style={{ marginTop: 20 }}>
+                <View style={[styles.saveBtn, { backgroundColor: 'transparent', borderColor: accentBase, borderWidth: 2 }]}>
+                  <Text style={[styles.saveBtnText, { color: accentBase }]}>Save</Text>
                 </View>
               </TouchableOpacity>
             </ScrollView>
@@ -522,6 +684,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
   },
+  settingsSub: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  geminiIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
   dangerLabel: {
     fontWeight: '600',
     fontSize: 15,
@@ -659,6 +835,70 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 6,
+  },
+  geminiFieldLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  keyInputWrap: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  keyInput: {
+    paddingRight: 44,
+  },
+  keyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  keyLinkText: {
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  keyEye: {
+    position: 'absolute',
+    right: 12,
+    height: 24,
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearKeyLink: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  clearKeyText: {
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  modelList: {
+    gap: 8,
+  },
+  modelItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  modelTextWrap: {
+    flex: 1,
+    marginRight: 10,
+  },
+  modelLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modelDesc: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
   },
   modalInput: {
     paddingHorizontal: 14,

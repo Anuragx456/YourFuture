@@ -26,20 +26,8 @@ export default function CustomTabBar({
   const activeLabel = accent;
   const inactiveLabel = isDark ? 'rgba(235, 235, 245, 0.65)' : 'rgba(0, 0, 0, 0.45)';
   const shadow = isDark
-    ? {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.45,
-        shadowRadius: 14,
-        elevation: 16,
-      }
-    : {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
-        elevation: 6,
-      };
+    ? { boxShadow: '0 6px 14px rgba(0, 0, 0, 0.45)' }
+    : { boxShadow: '0 3px 8px rgba(0, 0, 0, 0.12)' };
 
   const containerRef = useRef<View>(null);
   const tabRefs = useRef<(React.ElementRef<typeof TouchableOpacity> | null)[]>([]);

@@ -21,6 +21,7 @@ export interface UserProfile {
   theme: 'light' | 'dark';
   primaryColor: string;
   accentColor: string;
+  geminiModel: string;
 }
 
 export interface Prediction {

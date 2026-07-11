@@ -23,6 +23,7 @@ const initialState: UserProfile = {
   theme: 'dark',
   primaryColor: '#8b5cf6',
   accentColor: '#c4b5fd',
+  geminiModel: 'gemini-2.5-flash',
 };
 
 export const useUserStore = create<UserStore>()(

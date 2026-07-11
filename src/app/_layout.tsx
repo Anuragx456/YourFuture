@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useUserStore } from '../store/userStore';
+import { COLORS } from '../constants/colors';
 
 export default function RootLayout() {
   const { profile } = useUserStore();
@@ -18,13 +20,16 @@ export default function RootLayout() {
     }
   }, [profile.onboarded, segments, router]);
 
+  const isDark = profile.theme === 'dark';
+  const navBg = isDark ? COLORS.background.dark : COLORS.background.light;
+
   return (
-    <>
-      <Stack screenOptions={{ headerShown: false }}>
+    <View style={{ flex: 1, backgroundColor: navBg }}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: navBg } }}>
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
       </Stack>
-      <StatusBar style={profile.theme === 'dark' ? 'light' : 'dark'} />
-    </>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </View>
   );
 }

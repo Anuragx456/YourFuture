@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedProps, withTiming, Easing } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { useUserStore } from '../store/userStore';
@@ -11,9 +12,12 @@ interface ProgressRingProps {
   size?: number;
   strokeWidth?: number;
   color?: string;
+  label?: string;
+  labelColor?: string;
+  labelSize?: number;
 }
 
-export default function ProgressRing({ progress, size = 60, strokeWidth = 8, color }: ProgressRingProps) {
+export default function ProgressRing({ progress, size = 60, strokeWidth = 8, color, label, labelColor, labelSize }: ProgressRingProps) {
   const { profile } = useUserStore();
   const isDark = profile.theme === 'dark';
   const primary = color || (isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary));
@@ -36,7 +40,7 @@ export default function ProgressRing({ progress, size = 60, strokeWidth = 8, col
 
   const svgStyle = { transform: [{ rotate: '-90deg' as const }] };
 
-  return (
+  const ring = (
     <Svg width={size} height={size} style={svgStyle}>
       <Circle
         cx={size / 2}
@@ -59,4 +63,40 @@ export default function ProgressRing({ progress, size = 60, strokeWidth = 8, col
       />
     </Svg>
   );
+
+  if (!label) return ring;
+
+  return (
+    <View style={[styles.wrap, { width: size, height: size }]}>
+      {ring}
+      <View style={styles.center}>
+        <Text
+          style={[
+            styles.label,
+            {
+              color: labelColor || primary,
+              fontSize: labelSize || size * 0.24,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  wrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  center: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontWeight: '700',
+  },
+});

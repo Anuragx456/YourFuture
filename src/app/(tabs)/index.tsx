@@ -5,6 +5,7 @@ import { BarChart } from 'react-native-gifted-charts';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useUserStore } from '../../store/userStore';
 import { useHabitStore } from '../../store/habitStore';
+import { usePredictionStore } from '../../store/predictionStore';
 import ProgressRing from '../../components/ProgressRing';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,6 +14,7 @@ import { COLORS, tintedDark } from '../../constants/colors';
 export default function Dashboard() {
   const { profile } = useUserStore();
   const { habits } = useHabitStore();
+  const prediction = usePredictionStore((s) => s.prediction);
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
   const { width } = useWindowDimensions();
@@ -20,9 +22,7 @@ export default function Dashboard() {
   const isDark = profile.theme === 'dark';
   const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
   const accent = isDark ? '#f8fafc' : (profile.accentColor || COLORS.accent);
-  const primaryText = isDark ? '#090514' : '#ffffff';
   const pad = Math.max(20, width * 0.06);
-  const teaserMuted = isDark ? 'rgba(9,5,20,0.6)' : 'rgba(255,255,255,0.8)';
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -58,14 +58,27 @@ export default function Dashboard() {
   const accentBase = profile.primaryColor || COLORS.primary;
   const bg = isDark ? tintedDark(accentBase, 0.05) : COLORS.background.light;
   const cardBg = isDark ? tintedDark(accentBase, 0.12) : '#ffffff';
-  const borderCol = isDark ? COLORS.border.dark : COLORS.border.light;
   const textPrimary = isDark ? 'white' : COLORS.text.light;
   const textMuted = isDark ? COLORS.text.mutedDark : COLORS.text.mutedLight;
+  const fadedAccent = `${accent}40`;
+  const teaserText = isDark ? '#ffffff' : '#090514';
+  const teaserMuted = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(9,5,20,0.6)';
+
+  const tips = prediction
+    ? [
+        ...(prediction.gains?.[0]
+          ? [{ icon: 'arrow-up-circle' as const, color: '#22c55e', text: prediction.gains[0] }]
+          : []),
+        ...(prediction.risks?.[0]
+          ? [{ icon: 'alert-circle' as const, color: '#f59e0b', text: prediction.risks[0] }]
+          : []),
+      ].slice(0, 2)
+    : [];
 
   const screenStyle = [styles.screen, { backgroundColor: bg }];
   const scrollContent = [styles.scrollContent, { paddingHorizontal: pad }];
   const avatarBtnStyle = [styles.avatarBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }];
-  const statusCardStyle = [styles.statusCard, { backgroundColor: cardBg, borderColor: borderCol }];
+  const statusCardStyle = [styles.statusCard, { backgroundColor: cardBg, borderColor: fadedAccent }];
   const logBtnStyle = [
     styles.logBtn,
     {
@@ -73,11 +86,11 @@ export default function Dashboard() {
       borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0',
     },
   ];
-  const chartCardStyle = [styles.chartCard, { backgroundColor: cardBg, borderColor: borderCol }];
-  const teaserCardStyle = [styles.teaserCard, { backgroundColor: primary }];
+  const chartCardStyle = [styles.chartCard, { backgroundColor: cardBg, borderColor: fadedAccent }];
+  const teaserCardStyle = [styles.teaserCard, { backgroundColor: cardBg, borderColor: fadedAccent }];
   const teaserCtaStyle = [
     styles.teaserCta,
-    { backgroundColor: isDark ? 'rgba(9,5,20,0.08)' : 'rgba(255,255,255,0.15)' },
+    { backgroundColor: fadedAccent },
   ];
 
   return (
@@ -117,7 +130,15 @@ export default function Dashboard() {
                 {completedToday} of {totalHabits} habits done.
               </Text>
             </View>
-            <ProgressRing progress={progress} size={80} strokeWidth={8} color={primary} />
+            <ProgressRing
+              progress={progress}
+              size={80}
+              strokeWidth={8}
+              color={primary}
+              label={`${completedToday}/${totalHabits}`}
+              labelColor={textPrimary}
+              labelSize={18}
+            />
           </View>
           <TouchableOpacity
             onPress={() => router.push('/habits')}
@@ -161,20 +182,36 @@ export default function Dashboard() {
           >
             <View style={teaserCardStyle}>
               <View style={styles.teaserHeader}>
-                <Ionicons name="sparkles" size={16} color={teaserMuted} />
-                <Text style={[styles.teaserLabel, { color: teaserMuted }]}>
+                <Ionicons name="sparkles" size={16} color={accent} />
+                <Text style={[styles.teaserLabel, { color: accent }]}>
                   Predictive Insight
                 </Text>
               </View>
 
-              <Text style={[styles.teaserTitle, { color: primaryText }]}>See Your Future Self</Text>
-              <Text style={[styles.teaserBody, { color: teaserMuted }]} selectable>
-                Based on your consistency, we can forecast your trajectory.
-              </Text>
-
-              <View style={teaserCtaStyle}>
-                <Text style={[styles.teaserCtaText, { color: primaryText }]}>Explore Prediction →</Text>
-              </View>
+              {prediction && tips.length > 0 ? (
+                <View style={styles.tipsWrap}>
+                  {tips.map((tip, i) => (
+                    <View key={i} style={styles.tipRow}>
+                      <Ionicons name={tip.icon} size={18} color={tip.color} style={styles.tipIcon} />
+                      <Text style={[styles.tipText, { color: textPrimary }]} numberOfLines={2}>
+                        {tip.text}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={teaserCtaStyle}>
+                    <Text style={[styles.teaserCtaText, { color: teaserText }]}>View Full Forecast →</Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <Text style={[styles.teaserBody, { color: teaserMuted }]} selectable>
+                    Based on your consistency, we can forecast your trajectory.
+                  </Text>
+                  <View style={teaserCtaStyle}>
+                    <Text style={[styles.teaserCtaText, { color: teaserText }]}>Explore Prediction →</Text>
+                  </View>
+                </>
+              )}
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -294,7 +331,7 @@ const styles = StyleSheet.create({
   teaserHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   teaserLabel: {
     fontWeight: '600',
@@ -303,16 +340,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1,
   },
-  teaserTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 6,
-    letterSpacing: -0.3,
-  },
   teaserBody: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 16,
+  },
+  tipsWrap: {
+    gap: 12,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  tipIcon: {
+    marginRight: 10,
+    marginTop: 1,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '500',
   },
   teaserCta: {
     alignSelf: 'flex-start',
