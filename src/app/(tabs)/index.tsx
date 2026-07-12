@@ -10,6 +10,7 @@ import ProgressRing from '../../components/ProgressRing';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS, tintedDark } from '../../constants/colors';
+import { getQuoteForToday } from '../../constants/quotes';
 
 export default function Dashboard() {
   const { profile } = useUserStore();
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const completedToday = habits.filter((h) => (h.completions[today] || 0) >= h.targetValue).length;
   const totalHabits = habits.length;
   const progress = totalHabits > 0 ? completedToday / totalHabits : 0;
+  const dailyQuote = getQuoteForToday();
 
   const barData = useMemo(() => {
     const data = [];
@@ -108,6 +110,10 @@ export default function Dashboard() {
           <View style={styles.headerTextCol}>
             <Text style={[styles.welcomeText, { color: textMuted }]}>Welcome back</Text>
             <Text style={[styles.nameText, { color: textPrimary }]} selectable>{profile.name || 'Explorer'}</Text>
+            <View style={styles.quoteRow}>
+              <Ionicons name="chatbubble-ellipses-outline" size={14} color={accent} style={styles.quoteIcon} />
+              <Text style={[styles.quoteText, { color: textMuted }]} selectable>{dailyQuote}</Text>
+            </View>
           </View>
           <TouchableOpacity
             onPress={() => router.push('/(tabs)/profile')}
@@ -246,6 +252,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
     letterSpacing: -0.5,
+  },
+  quoteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 10,
+    maxWidth: '90%',
+  },
+  quoteIcon: {
+    marginRight: 6,
+    marginTop: 2,
+  },
+  quoteText: {
+    flex: 1,
+    fontSize: 13,
+    fontStyle: 'italic',
+    lineHeight: 18,
+    fontWeight: '500',
   },
   avatarBtn: {
     width: 40,

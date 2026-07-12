@@ -22,8 +22,8 @@ export function buildPredictionPrompt(profile: UserProfile, habits: Habit[], tim
     Name: ${profile.name}
     Age: ${profile.age}
     Goals: ${profile.goals.join(', ')}
-    
-    POSITIVE HABITS (Last 30 days):
+
+    POSITIVE HABITS (Last 30 days, with measured consistency):
     ${habitsSummary}
 
     CURRENT BAD HABITS / STRUGGLES:
@@ -32,7 +32,8 @@ export function buildPredictionPrompt(profile: UserProfile, habits: Habit[], tim
     TASK:
     1. Analyze what the user can GAIN if they maintain consistency with their positive habits over the next ${timeframe}.
     2. Analyze how their life could be NEGATIVELY IMPACTED or "destroyed" if they continue their current bad habits over the same ${timeframe}.
-    3. Provide a combined "Future Forecast" report.
+    3. Provide a combined "Future Forecast" report as a SINGLE concise, hard-hitting paragraph (3-5 sentences).
+    4. Suggest 2-4 NEW concrete habits (not already listed) that would directly counter the user's current struggles and gaps revealed by their progress, so they can improve their trajectory.
     
     OUTPUT FORMAT (Strict JSON):
     {
@@ -40,7 +41,9 @@ export function buildPredictionPrompt(profile: UserProfile, habits: Habit[], tim
       "score": number (1-10, representing overall trajectory health),
       "gains": string[] (list of major positive outcomes),
       "risks": string[] (list of major negative outcomes if bad habits continue),
-      "report": string (a detailed, hard-hitting, yet motivating narrative report of 3-4 paragraphs)
+      "report": string (ONE concise paragraph, 3-5 sentences, hard-hitting yet motivating),
+      "narrativePoints": string[] (3-6 bullet-point takeaways summarizing the key narrative),
+      "suggestedHabits": string[] (2-4 actionable new habit ideas to fix current struggles)
     }
     
     Tone: Professional, realistic, hard-hitting about risks, and highly motivating about gains.

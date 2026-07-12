@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, useWindowDimensions, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/userStore';
 import { useHabitStore } from '../../store/habitStore';
 import HabitCard from '../../components/HabitCard';
 import HabitForm from '../../components/HabitForm';
+import { HABIT_CATEGORIES } from '../../constants/habitCategories';
+import { registerForNotifications, rescheduleAll, cancelHabitReminder } from '../../lib/notifications';
+import { Habit } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, tintedDark } from '../../constants/colors';
+
+type SortMode = 'category' | 'name' | 'recent';
+
+const SORT_OPTIONS: { key: SortMode; label: string }[] = [
+  { key: 'category', label: 'Category' },
+  { key: 'name', label: 'Name' },
+  { key: 'recent', label: 'Recent' },
+];
 
 export default function HabitsScreen() {
   const { profile } = useUserStore();
   const { habits, deleteHabit } = useHabitStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [sortBy, setSortBy] = useState<SortMode>('category');
   const { width } = useWindowDimensions();
 
   const isDark = profile.theme === 'dark';
@@ -20,16 +33,67 @@ export default function HabitsScreen() {
   const primaryText = isDark ? '#090514' : '#ffffff';
   const pad = Math.max(20, width * 0.06);
 
+  // Register notification permissions + keep reminders in sync with habit data.
+  useEffect(() => {
+    registerForNotifications();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = useHabitStore.subscribe((state) => {
+      rescheduleAll(state.habits).catch(() => {});
+    });
+    return unsubscribe;
+  }, []);
+
   const handleDelete = (id: string) => {
     Alert.alert(
       'Archive Habit',
       'This will remove the habit and its history.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteHabit(id) },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            cancelHabitReminder(id);
+            deleteHabit(id);
+          },
+        },
       ]
     );
   };
+
+  const handleEdit = (habit: Habit) => {
+    setEditingHabit(habit);
+    setIsFormVisible(true);
+  };
+
+  const handleAdd = () => {
+    setEditingHabit(null);
+    setIsFormVisible(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormVisible(false);
+    setEditingHabit(null);
+  };
+
+  const sortedHabits = useMemo(() => {
+    const list = [...habits];
+    if (sortBy === 'name') {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === 'recent') {
+      list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    } else {
+      const order = HABIT_CATEGORIES.map((c) => c.value);
+      const rank = (cat: string) => {
+        const i = order.indexOf(cat);
+        return i === -1 ? order.length : i;
+      };
+      list.sort((a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name));
+    }
+    return list;
+  }, [habits, sortBy]);
 
   const accentBase = profile.primaryColor || COLORS.primary;
   const bg = isDark ? tintedDark(accentBase, 0.05) : COLORS.background.light;
@@ -42,6 +106,18 @@ export default function HabitsScreen() {
   const emptyIconBoxStyle = [styles.emptyIconBox, { backgroundColor: `${accent}20` }];
   const emptyBtnStyle = [styles.emptyBtn, { backgroundColor: primary }];
 
+  const sortChipStyle = (selected: boolean): object[] => [
+    styles.sortChip,
+    {
+      backgroundColor: selected ? primary : (isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc'),
+      borderColor: selected ? 'transparent' : (isDark ? COLORS.border.dark : COLORS.border.light),
+    },
+  ];
+  const sortChipTextStyle = (selected: boolean): object[] => [
+    styles.sortChipText,
+    { color: selected ? (isDark ? '#090514' : 'white') : textMuted },
+  ];
+
   return (
     <SafeAreaView style={screenStyle} edges={['top']}>
       <View style={contentStyle}>
@@ -51,7 +127,7 @@ export default function HabitsScreen() {
             <Text style={[styles.subtitle, { color: textMuted }]}>Your Daily Systems</Text>
           </View>
           <TouchableOpacity
-            onPress={() => setIsFormVisible(true)}
+            onPress={handleAdd}
             activeOpacity={0.8}
             style={addBtnStyle}
           >
@@ -59,25 +135,40 @@ export default function HabitsScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.sortRow}>
+          <Text style={[styles.sortLabel, { color: textMuted }]}>Sort</Text>
+          <View style={styles.sortChips}>
+            {SORT_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                onPress={() => setSortBy(opt.key)}
+                style={sortChipStyle(sortBy === opt.key)}
+              >
+                <Text style={sortChipTextStyle(sortBy === opt.key)}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         <FlatList
-          data={habits}
+          data={sortedHabits}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <HabitCard habit={item} onDelete={handleDelete} />
+            <HabitCard habit={item} onDelete={handleDelete} onEdit={handleEdit} />
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <View style={emptyIconBoxStyle}>
-                <Ionicons name="rocket-outline" size={36} color={accent} />
+                <Ionicons name="rocket-outline" size={36} color={textMuted} />
               </View>
               <Text style={[styles.emptyTitle, { color: textPrimary }]}>No habits active</Text>
               <Text style={[styles.emptyBody, { color: textMuted }]}>
                 Start by defining your first positive system.
               </Text>
               <TouchableOpacity
-                onPress={() => setIsFormVisible(true)}
+                onPress={handleAdd}
                 activeOpacity={0.8}
                 style={emptyBtnStyle}
               >
@@ -89,7 +180,8 @@ export default function HabitsScreen() {
 
         <HabitForm
           isVisible={isFormVisible}
-          onClose={() => setIsFormVisible(false)}
+          onClose={handleCloseForm}
+          habit={editingHabit}
         />
       </View>
     </SafeAreaView>
@@ -108,7 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   addBtn: {
     width: 44,
@@ -126,6 +218,32 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
     fontSize: 13,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  sortLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginRight: 12,
+  },
+  sortChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  sortChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   listContent: {
     paddingBottom: 120,

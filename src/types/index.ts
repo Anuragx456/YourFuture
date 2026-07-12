@@ -1,5 +1,4 @@
-export type HabitCategory = 'health' | 'finance' | 'career' | 
-                     'relationships' | 'learning' | 'mindfulness';
+export type HabitCategory = string;
 
 export interface Habit {
   id: string;
@@ -10,6 +9,14 @@ export interface Habit {
   unit: string;
   completions: Record<string, number>; // { '2025-05-14': 2 }
   createdAt: string;
+  reminderTime?: string | null; // "HH:mm" 24h local time, or null/undefined if disabled
+}
+
+export interface CustomCategory {
+  value: string;
+  label: string;
+  icon: string;
+  color: string;
 }
 
 export interface UserProfile {
@@ -31,6 +38,8 @@ export interface Prediction {
   gains: string[];
   risks: string[];
   report: string;
+  narrativePoints?: string[];
+  suggestedHabits?: string[];
 }
 
 export interface HabitStore {

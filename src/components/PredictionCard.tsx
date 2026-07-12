@@ -26,6 +26,18 @@ export default function PredictionCard({ data }: PredictionCardProps) {
   const scoreCircleStyle = [styles.scoreCircle, { backgroundColor: `${accent}15`, borderColor: `${accent}30` }];
   const narrativeStyle = [styles.narrative, { borderTopColor: borderCol }];
 
+  const narrativePoints = data.narrativePoints && data.narrativePoints.length > 0
+    ? data.narrativePoints
+    : data.report
+      .split('\n')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .slice(1);
+
+  const suggestions = data.suggestedHabits && data.suggestedHabits.length > 0
+    ? data.suggestedHabits
+    : [];
+
   return (
     <View style={cardStyle}>
       <View style={styles.headerRow}>
@@ -71,11 +83,40 @@ export default function PredictionCard({ data }: PredictionCardProps) {
         ))}
       </View>
 
-      {/* Narrative */}
+      {/* Narrative: one paragraph + bullet points */}
       <View style={narrativeStyle}>
         <Text style={[styles.narrativeLabel, { color: textMuted }]}>Future Narrative</Text>
-        <Text style={[styles.narrativeText, { color: textColor }]} selectable>{data.report}</Text>
+        <Text style={[styles.narrativeText, { color: textColor }]} selectable>
+          {data.report}
+        </Text>
+        {narrativePoints.length > 0 && (
+          <View style={styles.pointsWrap}>
+            {narrativePoints.map((point, i) => (
+              <View key={i} style={styles.pointRow}>
+                <Ionicons name="ellipse" size={6} color={accent} style={styles.pointDot} />
+                <Text style={[styles.pointText, { color: textColor }]}>{point}</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
+
+      {/* Suggested Habits */}
+      {suggestions.length > 0 && (
+        <View style={[styles.section, { marginTop: 20 }]}>
+          <View style={styles.sectionRow}>
+            <View style={styles.suggestIconBox}>
+              <Ionicons name="bulb-outline" size={12} color="#8b5cf6" />
+            </View>
+            <Text style={[styles.sectionTitle, { color: textMuted }]}>Suggested Habits</Text>
+          </View>
+          {suggestions.map((s, i) => (
+            <View key={i} style={styles.bulletRow}>
+              <Text style={[styles.bulletText, { color: textColor }]}>• {s}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -172,5 +213,32 @@ const styles = StyleSheet.create({
   narrativeText: {
     fontSize: 14,
     lineHeight: 22,
+  },
+  pointsWrap: {
+    marginTop: 12,
+  },
+  pointRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  pointDot: {
+    marginTop: 7,
+    marginRight: 10,
+  },
+  pointText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  suggestIconBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
 });

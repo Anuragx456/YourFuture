@@ -10,38 +10,45 @@ import Animated, {
   FadeOutUp
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { Habit, HabitCategory } from '../types';
+import { Habit } from '../types';
 import { useUserStore } from '../store/userStore';
 import { useHabitStore } from '../store/habitStore';
+import { useCategoryStore } from '../store/categoryStore';
+import { getCategoryMeta } from '../constants/habitCategories';
 import ProgressRing from './ProgressRing';
 import { COLORS, tintedDark } from '../constants/colors';
-
-const CATEGORY_LABELS: Record<HabitCategory, string> = {
-  health: 'Health & Fitness',
-  finance: 'Finance & Wealth',
-  career: 'Career & Productivity',
-  relationships: 'Relationships & Social',
-  learning: 'Learning & Skills',
-  mindfulness: 'Mindfulness & Peace',
-};
 
 interface HabitCardProps {
   habit: Habit;
   onDelete: (id: string) => void;
+  onEdit: (habit: Habit) => void;
 }
 
-export default function HabitCard({ habit, onDelete }: HabitCardProps) {
+export default function HabitCard({ habit, onDelete, onEdit }: HabitCardProps) {
   const [showActions, setShowActions] = useState(false);
   const { profile } = useUserStore();
   const { toggleCompletion } = useHabitStore();
+  const { customCategories } = useCategoryStore();
+
+  const categoryMeta = getCategoryMeta(habit.category, customCategories);
 
   const isDark = profile.theme === 'dark';
   const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
-  const accent = isDark ? '#f8fafc' : (profile.accentColor || COLORS.accent);
   const primaryText = isDark ? '#090514' : '#ffffff';
 
   const today = new Date().toISOString().split('T')[0];
-  const todayProgress = habit.completions[today] || 0;
+  let todayProgress: number;
+  if (habit.frequency === 'weekly') {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - start.getDay()); // week starts Sunday
+    const startStr = start.toISOString().split('T')[0];
+    todayProgress = Object.entries(habit.completions)
+      .filter(([date]) => date >= startStr)
+      .reduce((sum, [, count]) => sum + (count || 0), 0);
+  } else {
+    todayProgress = habit.completions[today] || 0;
+  }
   const progress = Math.min(todayProgress / habit.targetValue, 1);
 
   const progressValue = useSharedValue(0);
@@ -65,18 +72,6 @@ export default function HabitCard({ habit, onDelete }: HabitCardProps) {
     toggleCompletion(habit.id, today);
   };
 
-  const getIconForCategory = (category: HabitCategory): React.ComponentProps<typeof Ionicons>['name'] => {
-    switch (category) {
-      case 'health': return 'barbell-outline';
-      case 'finance': return 'wallet-outline';
-      case 'career': return 'briefcase-outline';
-      case 'relationships': return 'people-outline';
-      case 'learning': return 'book-outline';
-      case 'mindfulness': return 'leaf-outline';
-      default: return 'checkbox-outline';
-    }
-  };
-
   const accentBase = profile.primaryColor || COLORS.primary;
   const bg = isDark ? tintedDark(accentBase, 0.12) : '#ffffff';
   const borderCol = isDark ? COLORS.border.dark : COLORS.border.light;
@@ -84,7 +79,7 @@ export default function HabitCard({ habit, onDelete }: HabitCardProps) {
   const textMuted = isDark ? COLORS.text.mutedDark : COLORS.text.mutedLight;
 
   const cardStyle = [styles.card, { backgroundColor: bg, borderColor: borderCol }];
-  const iconBoxStyle = [styles.iconBox, { backgroundColor: `${accent}20` }];
+  const iconBoxStyle = [styles.iconBox, { backgroundColor: `${categoryMeta.color}20` }];
   const toggleBtnStyle = [
     styles.toggleBtn,
     {
@@ -103,14 +98,22 @@ export default function HabitCard({ habit, onDelete }: HabitCardProps) {
       >
         <View style={styles.headerRow}>
           <View style={iconBoxStyle}>
-            <Ionicons name={getIconForCategory(habit.category)} size={20} color={primary} />
+            <Ionicons name={categoryMeta.icon as any} size={20} color={textColorMain} />
           </View>
 
           <View style={styles.infoCol}>
             <Text style={[styles.nameText, { color: textColorMain }]}>{habit.name}</Text>
             <Text style={[styles.metaText, { color: textMuted }]}>
-              {CATEGORY_LABELS[habit.category]} • {habit.frequency === 'daily' ? 'Daily' : 'Weekly'}
+              {categoryMeta.label} • {habit.frequency === 'daily' ? 'Daily' : 'Weekly'}
             </Text>
+            {habit.reminderTime ? (
+              <View style={styles.reminderTag}>
+                <Ionicons name="alarm-outline" size={12} color={textMuted} />
+                <Text style={[styles.reminderTagText, { color: textMuted }]}>
+                  {habit.reminderTime}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <Animated.View style={ringStyle}>
@@ -141,6 +144,14 @@ export default function HabitCard({ habit, onDelete }: HabitCardProps) {
             <Text style={toggleTextStyle}>
               {progress === 1 ? 'Done ✓' : `+1 ${habit.unit}`}
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => onEdit(habit)}
+            style={styles.editBtn}
+          >
+            <Ionicons name="create-outline" size={18} color={primary} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -189,6 +200,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
   },
+  reminderTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  reminderTagText: {
+    marginLeft: 4,
+    fontSize: 11,
+    fontWeight: '600',
+  },
   actionsRow: {
     marginTop: 8,
     flexDirection: 'row',
@@ -210,6 +231,14 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     backgroundColor: 'rgba(244, 63, 94, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
