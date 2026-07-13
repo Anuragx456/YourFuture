@@ -1,5 +1,5 @@
 export const COLORS = {
-  primary: '#8b5cf6', // Violet 500
+  primary: '#3b82f6', // Blue 500
   secondary: '#ec4899', // Pink 500
   background: {
     light: '#f8fafc',
@@ -21,7 +21,7 @@ export const COLORS = {
     dark: 'rgba(255, 255, 255, 0.08)',
   },
   gradients: {
-    primary: ['#8b5cf6', '#ec4899'], // Violet to Pink (AI / Future theme)
+    primary: ['#3b82f6', '#6366f1'], // Blue to Indigo (AI / Future theme)
     space: ['#090514', '#02000a'], // Deep space
     glass: ['rgba(30, 41, 59, 0.4)', 'rgba(30, 41, 59, 0.2)'],
     lightGlass: ['rgba(255, 255, 255, 0.7)', 'rgba(255, 255, 255, 0.5)'],

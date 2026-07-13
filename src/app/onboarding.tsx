@@ -44,6 +44,17 @@ export default function Onboarding() {
   const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
   const primaryText = isDark ? '#090514' : '#ffffff';
 
+  const bgColor = isDark ? COLORS.background.dark : COLORS.background.light;
+  const textColor = isDark ? 'white' : COLORS.text.light;
+  const mutedColor = isDark ? '#94a3b8' : '#64748b';
+  const fieldLabelColor = isDark ? '#64748b' : '#475569';
+  const inputBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)';
+  const inputTextColor = isDark ? 'white' : COLORS.text.light;
+  const inputBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+  const unselectedBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)';
+  const inactiveProgress = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
+  const disabledBtnBg = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)';
+
   const handleNext = () => {
     if (step < 3) {
       setStep(step + 1);
@@ -75,41 +86,41 @@ export default function Onboarding() {
 
   const progressSegmentStyle = (s: number): object[] => [
     styles.progressSegment,
-    { backgroundColor: step >= s ? primary : 'rgba(255, 255, 255, 0.06)' },
+    { backgroundColor: step >= s ? primary : inactiveProgress },
   ];
 
-  const inputNameStyle = [styles.input, { borderColor: isNameFocused ? primary : 'rgba(255, 255, 255, 0.08)' }];
-  const inputAgeStyle = [styles.input, { borderColor: isAgeFocused ? primary : 'rgba(255, 255, 255, 0.08)' }];
+  const inputNameStyle = [styles.input, { borderColor: isNameFocused ? primary : inputBorder, backgroundColor: inputBg, color: inputTextColor }];
+  const inputAgeStyle = [styles.input, { borderColor: isAgeFocused ? primary : inputBorder, backgroundColor: inputBg, color: inputTextColor }];
 
   const goalItemStyle = (selected: boolean): object[] => [
     styles.goalItem,
     {
-      backgroundColor: selected ? primary : 'rgba(255, 255, 255, 0.03)',
-      borderColor: selected ? 'transparent' : 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: selected ? primary : unselectedBg,
+      borderColor: selected ? 'transparent' : inputBorder,
     },
   ];
 
   const goalIconColor = (selected: boolean): string =>
-    selected ? (isDark ? '#090514' : 'white') : 'white';
+    selected ? (isDark ? '#090514' : 'white') : textColor;
   const goalLabelColor = (selected: boolean): string =>
-    selected ? (isDark ? '#090514' : 'white') : 'white';
+    selected ? (isDark ? '#090514' : 'white') : textColor;
 
   const struggleInputStyle = (id: string): object[] => [
     styles.struggleInput,
-    { borderColor: focusedBadHabit === id ? primary : 'rgba(255, 255, 255, 0.08)' },
+    { borderColor: focusedBadHabit === id ? primary : inputBorder, backgroundColor: inputBg, color: inputTextColor },
   ];
 
   const nextBtnStyle = [
     styles.nextBtn,
     {
-      backgroundColor: isButtonActive ? primary : 'rgba(255, 255, 255, 0.04)',
+      backgroundColor: isButtonActive ? primary : disabledBtnBg,
       opacity: isButtonActive ? 1 : 0.5,
     },
   ];
-  const nextBtnTextStyle = [styles.nextBtnText, { color: isButtonActive ? primaryText : 'white' }];
+  const nextBtnTextStyle = [styles.nextBtnText, { color: isButtonActive ? primaryText : textColor }];
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: bgColor }]} edges={['top']}>
       <View style={[styles.content, { paddingHorizontal: pad }]}>
         {/* Progress */}
         <View style={styles.progressRow}>
@@ -120,13 +131,13 @@ export default function Onboarding() {
 
         {step === 1 ? (
           <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.stepWrap}>
-            <Text style={styles.title}>Design your destiny.</Text>
-            <Text style={styles.subtitleWide}>
+            <Text style={[styles.title, { color: textColor }]}>Design your destiny.</Text>
+            <Text style={[styles.subtitleWide, { color: mutedColor }]}>
               FutureMe uses AI to forecast your life based on habits. Let&apos;s start with the basics.
             </Text>
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Full Name</Text>
+              <Text style={[styles.fieldLabel, { color: fieldLabelColor }]}>Full Name</Text>
               <TextInput
                 style={inputNameStyle}
                 placeholder="Enter your name"
@@ -139,7 +150,7 @@ export default function Onboarding() {
             </View>
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Current Age</Text>
+              <Text style={[styles.fieldLabel, { color: fieldLabelColor }]}>Current Age</Text>
               <TextInput
                 style={inputAgeStyle}
                 placeholder="Enter your age"
@@ -154,8 +165,8 @@ export default function Onboarding() {
           </Animated.View>
         ) : step === 2 ? (
           <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.stepWrap}>
-            <Text style={styles.title}>What matters most?</Text>
-            <Text style={styles.subtitleTight}>
+            <Text style={[styles.title, { color: textColor }]}>What matters most?</Text>
+            <Text style={[styles.subtitleTight, { color: mutedColor }]}>
               Select up to 3 priority areas.
             </Text>
 
@@ -184,15 +195,15 @@ export default function Onboarding() {
           </Animated.View>
         ) : (
           <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.stepWrap}>
-            <Text style={styles.title}>Honest Reflection.</Text>
-            <Text style={styles.subtitleTight}>
+            <Text style={[styles.title, { color: textColor }]}>Honest Reflection.</Text>
+            <Text style={[styles.subtitleTight, { color: mutedColor }]}>
               To predict your future, we need to know your current struggles. This stays private.
             </Text>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.goalScroll}>
               {BAD_HABITS.map((habit) => (
                 <View key={habit.id} style={styles.struggleField}>
-                  <Text style={styles.fieldLabel}>{habit.label}</Text>
+                  <Text style={[styles.fieldLabel, { color: fieldLabelColor }]}>{habit.label}</Text>
                   <TextInput
                     style={struggleInputStyle(habit.id)}
                     placeholder={habit.placeholder}

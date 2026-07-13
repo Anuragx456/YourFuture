@@ -4,14 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile, UserStore } from '../types';
 
 const ACCENT_MAP: Record<string, string> = {
-  '#8b5cf6': '#c4b5fd', // Violet
+  '#ef4444': '#fca5a5', // Red
   '#3b82f6': '#93c5fd', // Blue
-  '#6366f1': '#a5b4fc', // Indigo
-  '#14b8a6': '#5eead4', // Teal
   '#22c55e': '#86efac', // Green
   '#f97316': '#fdba74', // Orange
-  '#ef4444': '#fca5a5', // Red
-  '#ec4899': '#f9a8d4', // Pink
+  '#14b8a6': '#5eead4', // Turquoise
 };
 
 const initialState: UserProfile = {
@@ -20,9 +17,9 @@ const initialState: UserProfile = {
   goals: [],
   badHabits: {},
   onboarded: false,
-  theme: 'dark',
-  primaryColor: '#8b5cf6',
-  accentColor: '#c4b5fd',
+  theme: 'light',
+  primaryColor: '#3b82f6',
+  accentColor: '#93c5fd',
   geminiModel: 'gemini-2.5-flash',
 };
 

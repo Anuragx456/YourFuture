@@ -7,16 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, tintedDark } from '../../constants/colors';
 import { getApiKey, saveApiKey, deleteApiKey } from '../../lib/secureStore';
+import ColorPicker, { Panel3, Preview } from 'reanimated-color-picker';
 
 const PRESET_COLORS = [
-  { name: 'Violet', primary: '#8b5cf6' },
+  { name: 'Red', primary: '#ef4444' },
   { name: 'Blue', primary: '#3b82f6' },
-  { name: 'Indigo', primary: '#6366f1' },
-  { name: 'Teal', primary: '#14b8a6' },
   { name: 'Green', primary: '#22c55e' },
   { name: 'Orange', primary: '#f97316' },
-  { name: 'Red', primary: '#ef4444' },
-  { name: 'Pink', primary: '#ec4899' },
+  { name: 'Turquoise', primary: '#14b8a6' },
 ];
 
 const GOAL_OPTIONS = [
@@ -71,6 +69,7 @@ export default function ProfileScreen() {
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [tempModel, setTempModel] = useState(profile.geminiModel);
+  const [showWheelPicker, setShowWheelPicker] = useState(false);
 
   const totalCompletions = habits.reduce((acc, h) => acc + Object.keys(h.completions).length, 0);
   const totalHabits = habits.length;
@@ -155,7 +154,6 @@ export default function ProfileScreen() {
   const borderCol = isDark ? COLORS.border.dark : COLORS.border.light;
   const textColor = isDark ? 'white' : COLORS.text.light;
   const labelColor = isDark ? COLORS.text.mutedDark : COLORS.text.mutedLight;
-  const colorBtnWidth = (width - pad * 2 - 32 - 36) / 4;
 
   const screenStyle = [styles.screen, { backgroundColor: bg }];
   const scrollContent = [styles.scrollContent, { paddingHorizontal: pad }];
@@ -166,7 +164,6 @@ export default function ProfileScreen() {
     { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc', borderColor: borderCol },
   ];
   const settingsGroupStyle = [styles.settingsGroup, { backgroundColor: cardBg, borderColor: borderCol }];
-  const accentGridStyle = [styles.accentGrid, { backgroundColor: cardBg, borderColor: borderCol }];
   const sheetStyle = [
     styles.sheet,
     { backgroundColor: isDark ? '#000000' : '#ffffff', paddingHorizontal: pad },
@@ -326,7 +323,7 @@ export default function ProfileScreen() {
         {/* Accent Color Section */}
         <View style={styles.accentSection}>
           <Text style={[styles.accentTitle, { color: textColor }]}>Accent Color</Text>
-          <View style={accentGridStyle}>
+          <View style={[styles.accentRow, { backgroundColor: cardBg, borderColor: borderCol }]}>
             {PRESET_COLORS.map((color) => {
               const isSelected = primary === color.primary;
               return (
@@ -334,17 +331,23 @@ export default function ProfileScreen() {
                   key={color.name}
                   onPress={() => setPrimaryColor(color.primary)}
                   activeOpacity={0.7}
-                  style={[styles.colorBtn, { width: colorBtnWidth }]}
                 >
                   <View style={colorSwatchStyle(isSelected, color.primary)}>
                     {isSelected && (
-                      <Ionicons name="checkmark" size={20} color="white" />
+                      <Ionicons name="checkmark" size={16} color="white" />
                     )}
                   </View>
-                  <Text style={[styles.colorName, { color: labelColor }]}>{color.name}</Text>
                 </TouchableOpacity>
               );
             })}
+            <TouchableOpacity
+              onPress={() => setShowWheelPicker(true)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.colorSwatch, { backgroundColor: 'transparent', borderWidth: 2, borderColor: borderCol, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' }]}>
+                <Ionicons name="color-palette" size={18} color={labelColor} />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -522,6 +525,50 @@ export default function ProfileScreen() {
                 </View>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Color Wheel Modal */}
+      <Modal visible={showWheelPicker} animationType="slide" transparent>
+        <View style={styles.overlay}>
+          <View style={[styles.sheet, { height: '60%' }]}>
+            <View style={handleStyle} />
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Custom Color</Text>
+              <TouchableOpacity onPress={() => setShowWheelPicker(false)} style={closeBtnStyle}>
+                <Ionicons name="close" size={16} color={labelColor} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.wheelWrap}>
+              <ColorPicker
+                style={{ width: 220 }}
+                value={accentBase}
+                onCompleteJS={({ hex }) => {
+                  setPrimaryColor(hex);
+                }}
+              >
+                <Panel3
+                  style={{ width: 220, height: 220 }}
+                  centerChannel="saturation"
+                  thumbSize={28}
+                />
+                <View style={styles.wheelPreview}>
+                  <Preview style={{ width: 40, height: 40, borderRadius: 20 }} />
+                </View>
+              </ColorPicker>
+            </View>
+            <View style={styles.wheelFooter}>
+              <TouchableOpacity
+                onPress={() => setShowWheelPicker(false)}
+                activeOpacity={0.9}
+                style={{ flex: 1 }}
+              >
+                <View style={[styles.saveBtn, { backgroundColor: primary }]}>
+                  <Text style={[styles.saveBtnText, { color: primaryText }]}>Select</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -711,16 +758,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 12,
   },
-  accentGrid: {
+  accentRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 12,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-  },
-  colorBtn: {
-    alignItems: 'center',
   },
   colorSwatch: {
     width: 44,
@@ -729,10 +773,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  colorName: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 6,
+  wheelWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wheelPreview: {
+    marginTop: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  wheelFooter: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   footer: {
     alignItems: 'center',

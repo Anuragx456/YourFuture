@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Platform, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserStore } from '../store/userStore';
@@ -54,9 +54,10 @@ export default function CustomTabBar({
 
   const pillStyle = [styles.pill, { backgroundColor: pillBg, ...shadow }];
   const indicatorBaseStyle = [styles.indicator, { backgroundColor: activeBg }, indicatorStyle];
+  const bottomPad = Platform.OS === 'android' ? Math.max(insets.bottom, 48) : Math.max(insets.bottom, 10);
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+    <View style={[styles.container, { paddingBottom: bottomPad }]}>
       <View ref={containerRef} style={pillStyle}>
         <Animated.View pointerEvents="none" style={indicatorBaseStyle} />
 
