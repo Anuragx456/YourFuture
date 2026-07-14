@@ -1,22 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  interpolate,
-  Easing,
-  FadeInDown,
-  FadeOutUp
-} from 'react-native-reanimated';
+import React, { useState } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Habit } from '../types';
-import { useUserStore } from '../store/userStore';
 import { useHabitStore } from '../store/habitStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { getCategoryMeta } from '../constants/habitCategories';
 import ProgressRing from './ProgressRing';
-import { COLORS, tintedDark } from '../constants/colors';
+import { useAppTheme } from '../lib/theme';
 
 interface HabitCardProps {
   habit: Habit;
@@ -25,23 +15,19 @@ interface HabitCardProps {
 }
 
 export default function HabitCard({ habit, onDelete, onEdit }: HabitCardProps) {
-  const [showActions, setShowActions] = useState(false);
-  const { profile } = useUserStore();
   const { toggleCompletion } = useHabitStore();
   const { customCategories } = useCategoryStore();
+  const t = useAppTheme();
+  const [showActions, setShowActions] = useState(false);
 
   const categoryMeta = getCategoryMeta(habit.category, customCategories);
-
-  const isDark = profile.theme === 'dark';
-  const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
-  const primaryText = isDark ? '#090514' : '#ffffff';
 
   const today = new Date().toISOString().split('T')[0];
   let todayProgress: number;
   if (habit.frequency === 'weekly') {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - start.getDay()); // week starts Sunday
+    start.setDate(start.getDate() - start.getDay());
     const startStr = start.toISOString().split('T')[0];
     todayProgress = Object.entries(habit.completions)
       .filter(([date]) => date >= startStr)
@@ -50,136 +36,93 @@ export default function HabitCard({ habit, onDelete, onEdit }: HabitCardProps) {
     todayProgress = habit.completions[today] || 0;
   }
   const progress = Math.min(todayProgress / habit.targetValue, 1);
+  const done = progress >= 1;
 
-  const progressValue = useSharedValue(0);
-  const textColor = useSharedValue(0);
+  const toggleDay = () => toggleCompletion(habit.id, today);
 
-  useEffect(() => {
-    progressValue.value = withTiming(progress, {
-      duration: 600,
-      easing: Easing.out(Easing.cubic)
-    });
-    textColor.value = withTiming(progress === 1 ? 0 : 1, { duration: 400 });
-  }, [progress, progressValue, textColor]);
-
-  const ringStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(textColor.value, [0, 1], [0.8, 1]),
-    };
-  });
-
-  const toggleDay = () => {
-    toggleCompletion(habit.id, today);
-  };
-
-  const accentBase = profile.primaryColor || COLORS.primary;
-  const bg = isDark ? tintedDark(accentBase, 0.12) : '#ffffff';
-  const borderCol = isDark ? COLORS.border.dark : COLORS.border.light;
-  const textColorMain = isDark ? 'white' : COLORS.text.light;
-  const textMuted = isDark ? COLORS.text.mutedDark : COLORS.text.mutedLight;
-
-  const cardStyle = [styles.card, { backgroundColor: bg, borderColor: borderCol }];
-  const iconBoxStyle = [styles.iconBox, { backgroundColor: `${categoryMeta.color}20` }];
-  const toggleBtnStyle = [
-    styles.toggleBtn,
+  const card = [
+    styles.card,
     {
-      backgroundColor: progress === 1 ? (isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9') : primary,
-      borderColor: progress === 1 ? (isDark ? COLORS.border.dark : COLORS.border.light) : 'transparent',
+      backgroundColor: t.card,
+      borderColor: t.border,
     },
   ];
-  const toggleTextStyle = [styles.actionText, { color: progress === 1 ? textMuted : primaryText }];
 
   return (
-    <View style={styles.wrapper}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setShowActions(!showActions)}
-        style={cardStyle}
-      >
-        <View style={styles.headerRow}>
-          <View style={iconBoxStyle}>
-            <Ionicons name={categoryMeta.icon as any} size={20} color={textColorMain} />
-          </View>
-
-          <View style={styles.infoCol}>
-            <Text style={[styles.nameText, { color: textColorMain }]}>{habit.name}</Text>
-            <Text style={[styles.metaText, { color: textMuted }]}>
-              {categoryMeta.label} • {habit.frequency === 'daily' ? 'Daily' : 'Weekly'}
-            </Text>
-            {habit.reminderTime ? (
-              <View style={styles.reminderTag}>
-                <Ionicons name="alarm-outline" size={12} color={textMuted} />
-                <Text style={[styles.reminderTagText, { color: textMuted }]}>
-                  {habit.reminderTime}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-
-          <Animated.View style={ringStyle}>
-            <ProgressRing
-              progress={progress}
-              size={48}
-              strokeWidth={5}
-              color={primary}
-              label={`${todayProgress}/${habit.targetValue}`}
-              labelColor={textColorMain}
-              labelSize={12}
-            />
-          </Animated.View>
+    <View style={card}>
+      <Pressable onPress={() => setShowActions((v) => !v)} style={styles.body}>
+        <View style={[styles.iconBox, { backgroundColor: `${categoryMeta.color}1F` }]}>
+          <Ionicons name={categoryMeta.icon as any} size={20} color={categoryMeta.color} />
         </View>
-      </TouchableOpacity>
+
+        <View style={styles.info}>
+          <Text style={[styles.name, { color: t.text }]} numberOfLines={1}>
+            {habit.name}
+          </Text>
+          <Text style={[styles.meta, { color: t.muted }]}>
+            {categoryMeta.label} · {habit.frequency === 'daily' ? 'Daily' : 'Weekly'}
+          </Text>
+        </View>
+
+        <ProgressRing
+          progress={progress}
+          size={46}
+          strokeWidth={5}
+          color={t.accent}
+          trackColor={t.track}
+          label={done ? '✓' : `${todayProgress}/${habit.targetValue}`}
+          labelColor={done ? t.accent : t.text}
+          labelSize={11}
+        />
+      </Pressable>
 
       {showActions && (
-        <Animated.View
-          entering={FadeInDown.duration(300)}
-          exiting={FadeOutUp.duration(200)}
-          style={styles.actionsRow}
-        >
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={toggleDay}
-            style={toggleBtnStyle}
-          >
-            <Text style={toggleTextStyle}>
-              {progress === 1 ? 'Done ✓' : `+1 ${habit.unit}`}
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.actions}>
+          <View style={styles.topActions}>
+            <Pressable
+              onPress={toggleDay}
+              style={[styles.actionBtn, { backgroundColor: t.accentSoft, flex: 1 }]}
+              accessibilityLabel="Add progress"
+            >
+              <Ionicons name="add" size={18} color={t.accent} />
+              <Text style={[styles.actionText, { color: t.accent }]}>Add</Text>
+            </Pressable>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
+            <Pressable
+              onPress={() => onDelete(habit.id)}
+              style={[styles.actionBtn, { backgroundColor: t.status.error, flex: 1 }]}
+              accessibilityLabel="Delete habit"
+            >
+              <Ionicons name="trash-outline" size={18} color="#fff" />
+              <Text style={[styles.actionText, { color: '#fff' }]}>Delete</Text>
+            </Pressable>
+          </View>
+
+          <Pressable
             onPress={() => onEdit(habit)}
-            style={styles.editBtn}
+            style={[styles.editBtn, { backgroundColor: t.card, borderColor: t.border }]}
+            accessibilityLabel="Edit habit"
           >
-            <Ionicons name="create-outline" size={18} color={primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => onDelete(habit.id)}
-            style={styles.deleteBtn}
-          >
-            <Ionicons name="trash-outline" size={18} color="#f43f5e" />
-          </TouchableOpacity>
-        </Animated.View>
+            <Ionicons name="create-outline" size={18} color={t.text} />
+            <Text style={[styles.actionText, { color: t.text }]}>Edit</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 16,
-  },
   card: {
     borderRadius: 20,
-    padding: 18,
-    width: '100%',
     borderWidth: 1,
+    marginBottom: 12,
+    overflow: 'hidden',
   },
-  headerRow: {
+  body: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
   },
   iconBox: {
     width: 44,
@@ -189,57 +132,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 14,
   },
-  infoCol: {
-    flex: 1,
-  },
-  nameText: {
-    fontWeight: '600',
+  info: { flex: 1, minWidth: 0 },
+  name: {
+    fontWeight: '700',
     fontSize: 16,
   },
-  metaText: {
+  meta: {
     marginTop: 2,
     fontSize: 12,
+    fontWeight: '500',
   },
-  reminderTag: {
+  actions: {
+    padding: 12,
+    paddingTop: 0,
+    gap: 10,
+  },
+  topActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
-  },
-  reminderTagText: {
-    marginLeft: 4,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  actionsRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 12,
+    justifyContent: 'center',
+    paddingVertical: 10,
     borderRadius: 12,
+    gap: 6,
+  },
+  editBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
     borderWidth: 1,
   },
   actionText: {
+    fontSize: 14,
     fontWeight: '600',
-    fontSize: 13,
-  },
-  deleteBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(244, 63, 94, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

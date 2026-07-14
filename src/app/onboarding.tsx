@@ -1,27 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, useWindowDimensions, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../store/userStore';
-import { COLORS } from '../constants/colors';
+import { GOAL_OPTIONS } from '../constants/shared';
+import BrandGlyph from '../components/BrandGlyph';
+import { useAppTheme } from '../lib/theme';
 
-const GOAL_OPTIONS = [
-  { label: 'Health & Fitness', icon: 'fitness' as const },
-  { label: 'Career & Productivity', icon: 'briefcase' as const },
-  { label: 'Finance & Wealth', icon: 'wallet' as const },
-  { label: 'Relationships & Social', icon: 'people' as const },
-  { label: 'Learning & Skills', icon: 'school' as const },
-  { label: 'Mindfulness & Peace', icon: 'sunny' as const },
-];
-
-const BAD_HABITS = [
-  { id: 'alcohol', label: 'Alcohol consumption', placeholder: 'e.g. 2 times a week' },
-  { id: 'screenTime', label: 'Daily screen time', placeholder: 'e.g. 5 hours' },
-  { id: 'junkFood', label: 'Junk food frequency', placeholder: 'e.g. 3 times a week' },
-  { id: 'procrastination', label: 'Procrastination level', placeholder: 'Low, Medium, High' },
-  { id: 'smoking', label: 'Smoking / Vaping', placeholder: 'Yes/No or frequency' },
+const STRUGGLE_CHIPS = [
+  'Procrastination',
+  'Late nights',
+  'Junk food',
+  'Doomscrolling',
+  'Skipping workouts',
+  'Overthinking',
 ];
 
 export default function Onboarding() {
@@ -29,44 +23,55 @@ export default function Onboarding() {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
-  const [badHabits, setBadHabits] = useState<Record<string, string>>({});
+  const [badHabits] = useState<Record<string, string>>({});
+  const [customStruggle, setCustomStruggle] = useState('');
+  const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const { width } = useWindowDimensions();
 
   const [isNameFocused, setIsNameFocused] = useState(false);
   const [isAgeFocused, setIsAgeFocused] = useState(false);
-  const [focusedBadHabit, setFocusedBadHabit] = useState<string | null>(null);
 
-  const { profile, setProfile, completeOnboarding } = useUserStore();
-  const isDark = profile.theme === 'dark';
+  const { setProfile, completeOnboarding } = useUserStore();
   const router = useRouter();
+  const t = useAppTheme();
 
   const pad = Math.max(20, width * 0.06);
-  const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
-  const primaryText = isDark ? '#090514' : '#ffffff';
+  const primary = t.accent;
+  const primaryText = t.onAccent;
 
-  const bgColor = isDark ? COLORS.background.dark : COLORS.background.light;
-  const textColor = isDark ? 'white' : COLORS.text.light;
-  const mutedColor = isDark ? '#94a3b8' : '#64748b';
-  const fieldLabelColor = isDark ? '#64748b' : '#475569';
-  const inputBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)';
-  const inputTextColor = isDark ? 'white' : COLORS.text.light;
-  const inputBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
-  const unselectedBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)';
-  const inactiveProgress = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
-  const disabledBtnBg = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)';
+  const bgColor = t.screenBg;
+  const textColor = t.textOnBg;
+  const mutedColor = t.mutedOnBg;
+  const fieldLabelColor = t.mutedOnBg;
+  const inputBg = t.cardAlt;
+  const inputTextColor = t.text;
+  const placeholderColor = t.muted;
+  const inputBorder = t.border;
+  const unselectedBg = t.card;
+  const inactiveProgress = t.borderOnBg;
+  const disabledBtnBg = t.cardAlt;
+
+  const sanitizeName = (value: string) => value.replace(/\s+/g, ' ').trim();
 
   const handleNext = () => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      setProfile({ name, age: parseInt(age) || 0, goals: selectedGoals, badHabits });
+      const cleanName = sanitizeName(name).slice(0, 50);
+      const parsedAge = Math.min(Math.max(parseInt(age) || 0, 1), 120);
+      const cleanCustom = customStruggle.trim().slice(0, 500);
+      setProfile({
+        name: cleanName,
+        age: parsedAge,
+        goals: selectedGoals,
+        badHabits: {
+          ...badHabits,
+          ...(cleanCustom ? { custom: cleanCustom } : {}),
+        },
+      });
       completeOnboarding();
       router.replace('/(tabs)');
     }
-  };
-
-  const updateBadHabit = (id: string, value: string) => {
-    setBadHabits((prev) => ({ ...prev, [id]: value }));
   };
 
   const toggleGoal = (goal: string) => {
@@ -77,12 +82,18 @@ export default function Onboarding() {
     }
   };
 
-  const isStep3Valid = BAD_HABITS.every((h) => badHabits[h.id] && badHabits[h.id].trim().length > 0);
+  const toggleStruggleChip = (chip: string) => {
+    if (selectedChips.includes(chip)) {
+      setSelectedChips(selectedChips.filter((c) => c !== chip));
+    } else {
+      setSelectedChips([...selectedChips, chip]);
+    }
+  };
 
   const isButtonActive =
     step === 1 ? name.trim() && age.trim()
       : step === 2 ? selectedGoals.length > 0
-        : isStep3Valid;
+        : selectedChips.length > 0 || customStruggle.trim().length > 0;
 
   const progressSegmentStyle = (s: number): object[] => [
     styles.progressSegment,
@@ -101,14 +112,9 @@ export default function Onboarding() {
   ];
 
   const goalIconColor = (selected: boolean): string =>
-    selected ? (isDark ? '#090514' : 'white') : textColor;
+    selected ? '#FFFFFF' : textColor;
   const goalLabelColor = (selected: boolean): string =>
-    selected ? (isDark ? '#090514' : 'white') : textColor;
-
-  const struggleInputStyle = (id: string): object[] => [
-    styles.struggleInput,
-    { borderColor: focusedBadHabit === id ? primary : inputBorder, backgroundColor: inputBg, color: inputTextColor },
-  ];
+    selected ? '#FFFFFF' : textColor;
 
   const nextBtnStyle = [
     styles.nextBtn,
@@ -117,31 +123,38 @@ export default function Onboarding() {
       opacity: isButtonActive ? 1 : 0.5,
     },
   ];
-  const nextBtnTextStyle = [styles.nextBtnText, { color: isButtonActive ? primaryText : textColor }];
+  const nextBtnTextStyle = [styles.nextBtnText, { color: isButtonActive ? primaryText : mutedColor }];
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: bgColor }]} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'android' ? undefined : 'padding'}
+      >
       <View style={[styles.content, { paddingHorizontal: pad }]}>
-        {/* Progress */}
-        <View style={styles.progressRow}>
-          {[1, 2, 3].map((s) => (
-            <View key={s} style={progressSegmentStyle(s)} />
-          ))}
+         {/* Brand glyph + Step indicator */}
+        <View style={styles.topRow}>
+          <BrandGlyph size={36} />
+          <View style={styles.stepDots}>
+            {[1, 2, 3].map((s) => (
+              <View key={s} style={progressSegmentStyle(s)} />
+            ))}
+          </View>
         </View>
 
         {step === 1 ? (
           <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.stepWrap}>
-            <Text style={[styles.title, { color: textColor }]}>Design your destiny.</Text>
-            <Text style={[styles.subtitleWide, { color: mutedColor }]}>
-              FutureMe uses AI to forecast your life based on habits. Let&apos;s start with the basics.
+            <Text style={[styles.title, { color: textColor }]}>Let&apos;s build your future.</Text>
+            <Text style={[styles.subtitle, { color: mutedColor }]}>
+              Tell us a bit about yourself to personalize your forecast.
             </Text>
 
             <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: fieldLabelColor }]}>Full Name</Text>
+              <Text style={[styles.fieldLabel, { color: fieldLabelColor }]}>Your name</Text>
               <TextInput
                 style={inputNameStyle}
-                placeholder="Enter your name"
-                placeholderTextColor="#475569"
+                placeholder="Your name"
+                placeholderTextColor={placeholderColor}
                 value={name}
                 onChangeText={setName}
                 onFocus={() => setIsNameFocused(true)}
@@ -150,11 +163,11 @@ export default function Onboarding() {
             </View>
 
             <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: fieldLabelColor }]}>Current Age</Text>
+              <Text style={[styles.fieldLabel, { color: fieldLabelColor }]}>Your age</Text>
               <TextInput
                 style={inputAgeStyle}
-                placeholder="Enter your age"
-                placeholderTextColor="#475569"
+                placeholder="Your age"
+                placeholderTextColor={placeholderColor}
                 keyboardType="numeric"
                 value={age}
                 onChangeText={setAge}
@@ -165,9 +178,14 @@ export default function Onboarding() {
           </Animated.View>
         ) : step === 2 ? (
           <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.stepWrap}>
-            <Text style={[styles.title, { color: textColor }]}>What matters most?</Text>
-            <Text style={[styles.subtitleTight, { color: mutedColor }]}>
-              Select up to 3 priority areas.
+            <View style={styles.backRow}>
+              <Pressable onPress={() => setStep(1)}>
+                <Ionicons name="chevron-back" size={24} color={textColor} />
+              </Pressable>
+            </View>
+            <Text style={[styles.title, { color: textColor }]}>What are you working toward?</Text>
+            <Text style={[styles.subtitle, { color: mutedColor }]}>
+              Select all that apply.
             </Text>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.goalScroll}>
@@ -175,10 +193,9 @@ export default function Onboarding() {
                 {GOAL_OPTIONS.map((item) => {
                   const isSelected = selectedGoals.includes(item.label);
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={item.label}
                       onPress={() => toggleGoal(item.label)}
-                      activeOpacity={0.8}
                       style={styles.goalItemWrap}
                     >
                       <View style={goalItemStyle(isSelected)}>
@@ -187,7 +204,7 @@ export default function Onboarding() {
                           {item.label.split(' & ')[0]}
                         </Text>
                       </View>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -195,43 +212,68 @@ export default function Onboarding() {
           </Animated.View>
         ) : (
           <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.stepWrap}>
-            <Text style={[styles.title, { color: textColor }]}>Honest Reflection.</Text>
-            <Text style={[styles.subtitleTight, { color: mutedColor }]}>
-              To predict your future, we need to know your current struggles. This stays private.
+            <View style={styles.backRow}>
+              <Pressable onPress={() => setStep(2)}>
+                <Ionicons name="chevron-back" size={24} color={textColor} />
+              </Pressable>
+            </View>
+            <Text style={[styles.title, { color: textColor }]}>What&apos;s holding you back?</Text>
+            <Text style={[styles.subtitle, { color: mutedColor }]}>
+              Be honest — this shapes your forecast.
             </Text>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.goalScroll}>
-              {BAD_HABITS.map((habit) => (
-                <View key={habit.id} style={styles.struggleField}>
-                  <Text style={[styles.fieldLabel, { color: fieldLabelColor }]}>{habit.label}</Text>
-                  <TextInput
-                    style={struggleInputStyle(habit.id)}
-                    placeholder={habit.placeholder}
-                    placeholderTextColor="#475569"
-                    value={badHabits[habit.id] || ''}
-                    onChangeText={(val) => updateBadHabit(habit.id, val)}
-                    onFocus={() => setFocusedBadHabit(habit.id)}
-                    onBlur={() => setFocusedBadHabit(null)}
-                  />
-                </View>
-              ))}
+              <View style={styles.fieldBlock}>
+                <TextInput
+                  style={[styles.input, { borderColor: inputBorder, backgroundColor: inputBg, color: inputTextColor, minHeight: 80 }]}
+                  placeholder="Describe your habits or struggles..."
+                  placeholderTextColor={placeholderColor}
+                  multiline
+                  value={customStruggle}
+                  onChangeText={setCustomStruggle}
+                />
+              </View>
+
+              <Text style={[styles.fieldLabel, { color: fieldLabelColor, marginBottom: 12 }]}>Or pick common ones:</Text>
+              <View style={styles.chipWrap}>
+                {STRUGGLE_CHIPS.map((chip) => {
+                  const isSelected = selectedChips.includes(chip);
+                  return (
+                    <Pressable
+                      key={chip}
+                      onPress={() => toggleStruggleChip(chip)}
+                      style={[
+                        styles.struggleChip,
+                        {
+                          backgroundColor: isSelected ? primary : unselectedBg,
+                          borderColor: isSelected ? 'transparent' : inputBorder,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.struggleChipText, { color: isSelected ? '#FFFFFF' : textColor }]}>
+                        {chip}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </ScrollView>
           </Animated.View>
         )}
 
         <View style={styles.footer}>
-          <TouchableOpacity
+          <Pressable
             onPress={handleNext}
-            activeOpacity={0.9}
             disabled={!isButtonActive}
             style={nextBtnStyle}
           >
             <Text style={nextBtnTextStyle}>
-              {step === 3 ? 'Initialize Future →' : 'Continue'}
+              {step === 3 ? 'Finish Setup' : 'Continue'}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -239,50 +281,60 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: COLORS.background.dark,
+    backgroundColor: '#E9E5D8',
   },
   content: {
     flex: 1,
     paddingTop: 16,
   },
-  progressRow: {
+  topRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
     marginBottom: 32,
   },
+  brandBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#1A1A1A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   progressSegment: {
-    height: 4,
-    flex: 1,
-    borderRadius: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  backRow: {
+    marginBottom: 8,
   },
   stepWrap: {
     flex: 1,
   },
   title: {
-    color: 'white',
+    color: '#1A1A1A',
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
-  subtitleWide: {
-    color: '#94a3b8',
+  subtitle: {
+    color: '#6E6E64',
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 28,
-  },
-  subtitleTight: {
-    color: '#94a3b8',
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 20,
   },
   fieldBlock: {
     marginBottom: 16,
   },
   fieldLabel: {
-    color: '#64748b',
+    color: '#6E6E64',
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -290,12 +342,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    color: 'white',
+    backgroundColor: '#F5F3EA',
+    color: '#1A1A1A',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 14,
-    borderWidth: 1.5,
+    borderWidth: 1,
     fontSize: 15,
     fontWeight: '500',
   },
@@ -319,6 +371,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 110,
     borderWidth: 1,
+    position: 'relative',
   },
   goalItemLabel: {
     textAlign: 'center',
@@ -326,30 +379,33 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
   },
-  struggleField: {
-    marginBottom: 14,
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  struggleInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    color: 'white',
+  struggleChip: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    fontSize: 15,
-    fontWeight: '500',
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  struggleChipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   footer: {
     paddingBottom: 32,
   },
   nextBtn: {
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 24,
     alignItems: 'center',
     width: '100%',
   },
   nextBtnText: {
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
 });

@@ -1,35 +1,43 @@
 export const COLORS = {
-  primary: '#3b82f6', // Blue 500
-  secondary: '#ec4899', // Pink 500
+  primary: '#E8622E',
   background: {
-    light: '#f8fafc',
-    dark: '#090514', // Premium Cosmic Deep Purple-Black
+    light: '#FCEDDF',
+    dark: '#1A1A1A',
   },
   card: {
-    light: '#ffffff',
-    dark: '#130c2c', // Translucent deep purple card background
+    light: '#DABE87',
+    dark: '#1A1A1A',
+  },
+  surface: {
+    light: '#DABE87',
+    dark: '#E9E5D8',
   },
   text: {
-    light: '#0f172a',
-    dark: '#f8fafc',
-    mutedLight: '#64748b',
-    mutedDark: '#94a3b8',
+    light: '#1A1A1A',
+    dark: '#FCEDDF',
+    mutedLight: '#56564C',
+    mutedDark: '#9A9A92',
   },
-  accent: '#a78bfa',
+  accent: '#E8622E',
   border: {
     light: 'rgba(0, 0, 0, 0.06)',
     dark: 'rgba(255, 255, 255, 0.08)',
   },
-  gradients: {
-    primary: ['#3b82f6', '#6366f1'], // Blue to Indigo (AI / Future theme)
-    space: ['#090514', '#02000a'], // Deep space
-    glass: ['rgba(30, 41, 59, 0.4)', 'rgba(30, 41, 59, 0.2)'],
-    lightGlass: ['rgba(255, 255, 255, 0.7)', 'rgba(255, 255, 255, 0.5)'],
-  }
+  placeholder: {
+    light: '#6E6E64',
+    dark: '#9A9A92',
+  },
+  status: {
+    pending: '#E8B94E',
+    success: '#4CAF6D',
+    error: '#E8622E',
+  },
+  avatar: {
+    blue: '#3D6FE0',
+    green: '#4CAF6D',
+  },
 };
 
-// Returns a darker shade of a hex color (factor 0..1 = remaining brightness).
-// Used to tint dark-mode backgrounds with the user's selected accent.
 export function tintedDark(hex: string, factor: number): string {
   const h = hex.replace('#', '');
   const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
@@ -40,4 +48,3 @@ export function tintedDark(hex: string, factor: number): string {
   const toHex = (v: number) => Math.round(v * f).toString(16).padStart(2, '0');
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
-

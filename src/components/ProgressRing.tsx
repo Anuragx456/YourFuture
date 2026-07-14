@@ -12,15 +12,17 @@ interface ProgressRingProps {
   size?: number;
   strokeWidth?: number;
   color?: string;
+  trackColor?: string;
   label?: string;
   labelColor?: string;
   labelSize?: number;
 }
 
-export default function ProgressRing({ progress, size = 60, strokeWidth = 8, color, label, labelColor, labelSize }: ProgressRingProps) {
+export default function ProgressRing({ progress, size = 60, strokeWidth = 8, color, trackColor, label, labelColor, labelSize }: ProgressRingProps) {
   const { profile } = useUserStore();
   const isDark = profile.theme === 'dark';
   const primary = color || (isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary));
+  const track = trackColor || (isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9');
 
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -41,12 +43,12 @@ export default function ProgressRing({ progress, size = 60, strokeWidth = 8, col
   const svgStyle = { transform: [{ rotate: '-90deg' as const }] };
 
   const ring = (
-    <Svg width={size} height={size} style={svgStyle}>
+    <Svg width={size} height={size} style={svgStyle} pointerEvents="none">
       <Circle
         cx={size / 2}
         cy={size / 2}
         r={radius}
-        stroke={isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}
+        stroke={track}
         strokeWidth={strokeWidth}
         fill="none"
       />

@@ -15,8 +15,8 @@ FutureMe is a production-ready React Native / Expo mobile application that track
 - **Framework:** Expo SDK 55 (Managed Workflow)
 - **Navigation:** Expo Router (File-based)
 - **State Management:** Zustand with AsyncStorage persistence
-- **AI:** Google Gemini API (`gemini-3.5-flash`)
-- **Styling:** NativeWind (Tailwind CSS)
+- **AI:** Google Gemini API
+- **Styling:** React Native StyleSheet
 - **Charts:** react-native-gifted-charts
 - **Animations:** React Native Reanimated
 
@@ -33,17 +33,14 @@ FutureMe is a production-ready React Native / Expo mobile application that track
    npm install
    ```
 
-3. **Configure Environment Variables:**
-   Create a `.env` file in the root directory and add your Gemini API Key:
-   ```env
-   EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
-   ```
-   *(A `.env.example` file is provided for reference)*
-
-4. **Start the application:**
+3. **Start the application:**
    ```bash
    npx expo start
    ```
+
+The app stores your Gemini API key securely on-device via iOS Keychain / Android Keystore (through `expo-secure-store`). Add your key in **Profile → Gemini AI**.
+
+See [PRIVACY.md](PRIVACY.md) for details on local data storage and security.
 
 ## 📁 Project Structure
 

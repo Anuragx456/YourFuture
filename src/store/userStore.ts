@@ -4,11 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile, UserStore } from '../types';
 
 const ACCENT_MAP: Record<string, string> = {
-  '#ef4444': '#fca5a5', // Red
-  '#3b82f6': '#93c5fd', // Blue
-  '#22c55e': '#86efac', // Green
-  '#f97316': '#fdba74', // Orange
-  '#14b8a6': '#5eead4', // Turquoise
+  '#ef4444': '#fca5a5',
+  '#E8622E': '#f5a382',
+  '#22c55e': '#86efac',
+  '#3b82f6': '#93c5fd',
+  '#14b8a6': '#5eead4',
 };
 
 const initialState: UserProfile = {
@@ -18,8 +18,8 @@ const initialState: UserProfile = {
   badHabits: {},
   onboarded: false,
   theme: 'light',
-  primaryColor: '#3b82f6',
-  accentColor: '#93c5fd',
+  primaryColor: '#E8622E',
+  accentColor: '#f5a382',
   geminiModel: 'gemini-2.5-flash',
 };
 
@@ -33,7 +33,11 @@ export const useUserStore = create<UserStore>()(
         })),
       completeOnboarding: () =>
         set((state) => ({
-          profile: { ...state.profile, onboarded: true },
+          profile: {
+            ...state.profile,
+            onboarded: true,
+            createdAt: state.profile.createdAt || new Date().toISOString(),
+          },
         })),
       setTheme: (theme) =>
         set((state) => ({

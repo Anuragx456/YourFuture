@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   Modal,
   ScrollView,
   useWindowDimensions,
@@ -17,7 +17,8 @@ import { useHabitStore } from '../store/habitStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { HABIT_CATEGORIES } from '../constants/habitCategories';
 import { getSuggestionsForStruggles } from '../constants/habitSuggestions';
-import { COLORS, tintedDark } from '../constants/colors';
+import { useAppTheme } from '../lib/theme';
+import BrandGlyph from './BrandGlyph';
 
 const FREQUENCIES = [
   { key: 'daily', label: 'Every Day' },
@@ -70,6 +71,7 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
   const { addCustomCategory, customCategories } = useCategoryStore();
   const { profile } = useUserStore();
   const { width } = useWindowDimensions();
+  const t = useAppTheme();
 
   const isEditing = !!habit;
 
@@ -94,14 +96,13 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
       setUnit('times');
       setIsCustomMode(false);
       setCustomCategoryName('');
-    setReminderEnabled(false);
-    setReminderDate(new Date());
+      setReminderEnabled(false);
+      setReminderDate(new Date());
     }
   }, [isVisible, habit]);
 
-  const isDark = profile.theme === 'dark';
-  const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
-  const primaryText = isDark ? '#090514' : '#ffffff';
+  const primary = t.accent;
+  const primaryText = t.onAccent;
   const pad = Math.max(20, width * 0.06);
 
   const suggestions =
@@ -150,11 +151,12 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
   };
 
   const handleSave = () => {
-    if (!name.trim()) return;
+    const trimmedName = name.trim().slice(0, 100);
+    if (!trimmedName) return;
 
     let finalCategory = category;
     if (isCustomMode) {
-      const trimmed = customCategoryName.trim();
+      const trimmed = customCategoryName.trim().slice(0, 30);
       if (!trimmed) return;
       const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       if (!slug) return;
@@ -162,17 +164,18 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
         value: slug,
         label: trimmed,
         icon: CUSTOM_CATEGORY_ICON,
-        color: profile.primaryColor || COLORS.primary,
+        color: profile.primaryColor || t.accent,
       });
       finalCategory = slug;
     }
 
+    const parsedTarget = Math.min(Math.max(parseInt(targetValue) || 1, 1), 9999);
     const payload = {
-      name: name.trim(),
+      name: trimmedName,
       category: finalCategory,
       frequency,
-      targetValue: parseInt(targetValue) || 1,
-      unit: unit.trim() || 'times',
+      targetValue: parsedTarget,
+      unit: unit.trim().slice(0, 30) || 'times',
       reminderTime: reminderEnabled ? formatTime(reminderDate) : null,
     };
 
@@ -199,55 +202,54 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
     setUnit(s.unit);
   };
 
-  const accentBase = profile.primaryColor || COLORS.primary;
-  const bg = isDark ? tintedDark(accentBase, 0.12) : '#ffffff';
-  const borderCol = isDark ? COLORS.border.dark : COLORS.border.light;
-  const textColor = isDark ? 'white' : COLORS.text.light;
-  const textMuted = isDark ? COLORS.text.mutedDark : COLORS.text.mutedLight;
-
   const inputStyle = (focused: boolean): object[] => [
     styles.input,
     {
-      backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-      borderColor: focused ? primary : borderCol,
-      color: textColor,
+      backgroundColor: t.cardAlt,
+      borderColor: focused ? primary : t.border,
+      color: t.text,
     },
   ];
 
   const chipStyle = (selected: boolean): object[] => [
     styles.chip,
     {
-      backgroundColor: selected ? primary : (isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc'),
-      borderColor: selected ? 'transparent' : borderCol,
+      backgroundColor: selected ? primary : t.cardAlt,
+      borderColor: selected ? 'transparent' : t.border,
     },
   ];
 
   const chipTextStyle = (selected: boolean): object[] => [
     styles.chipText,
-    { color: selected ? (isDark ? '#090514' : 'white') : textMuted },
+    { color: selected ? primaryText : t.muted },
   ];
 
   const freqStyle = (selected: boolean): object[] => [
     styles.freqBtn,
     {
-      backgroundColor: selected ? primary : (isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc'),
-      borderColor: selected ? 'transparent' : borderCol,
+      backgroundColor: selected ? primary : t.cardAlt,
+      borderColor: selected ? 'transparent' : t.border,
     },
   ];
 
   const freqTextStyle = (selected: boolean): object[] => [
     styles.freqText,
-    { color: selected ? (isDark ? '#090514' : 'white') : textMuted },
+    { color: selected ? primaryText : t.muted },
   ];
 
-  const sheetStyle = [styles.sheet, { backgroundColor: bg, paddingHorizontal: pad }];
-  const handleStyle = [styles.handle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }];
-  const closeBtnStyle = [styles.closeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }];
+  const sheetStyle = [styles.sheet, { backgroundColor: t.card, paddingHorizontal: pad }];
+  const handleStyle = [styles.handle, { backgroundColor: t.border }];
+  const closeBtnStyle = [styles.closeBtn, { backgroundColor: t.cardAlt }];
   const saveBtnStyle = [
     styles.saveBtn,
-    { backgroundColor: name.trim() ? primary : (isDark ? 'rgba(255,255,255,0.04)' : '#e2e8f0') },
+    { backgroundColor: name.trim() ? primary : t.cardAlt },
   ];
-  const saveTextStyle = [styles.saveText, { color: name.trim() ? primaryText : textMuted }];
+  const saveTextStyle = [styles.saveText, { color: name.trim() ? primaryText : t.muted }];
+
+  const borderCol = t.border;
+  const textColor = t.text;
+  const textMuted = t.muted;
+  const placeholderColor = t.muted;
 
   return (
     <Modal visible={isVisible} animationType="slide" transparent>
@@ -255,17 +257,20 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
         <View style={sheetStyle}>
           <View style={handleStyle} />
 
-          <View style={styles.headerRow}>
-            <Text style={[styles.title, { color: textColor }]}>
-              {isEditing ? 'Edit System' : 'Define System'}
-            </Text>
-            <TouchableOpacity onPress={onClose} style={closeBtnStyle}>
-              <Ionicons name="close" size={16} color={textColor} />
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.subtitle, { color: textMuted }]}>
-            {isEditing ? 'Update your positive change.' : 'Structure your positive change.'}
-          </Text>
+           <View style={styles.headerRow}>
+             <BrandGlyph size={34} />
+             <View style={styles.headerTextCol}>
+               <Text style={[styles.title, { color: textColor }]}>
+                 {isEditing ? 'Edit Habit' : 'New Habit'}
+               </Text>
+               <Text style={[styles.subtitle, { color: textMuted }]}>
+                 {isEditing ? 'Update the details below.' : 'Build a system you can stick to.'}
+               </Text>
+             </View>
+             <Pressable onPress={onClose} style={closeBtnStyle} accessibilityLabel="Close">
+               <Ionicons name="close" size={18} color={textColor} />
+             </Pressable>
+           </View>
 
           <ScrollView
             style={styles.scroll}
@@ -280,15 +285,14 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
                 </Text>
                 <View style={styles.suggestRow}>
                   {suggestions.map((s, i) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={i}
-                      activeOpacity={0.8}
                       onPress={() => applySuggestion(s)}
-                      style={[styles.suggestChip, { borderColor: borderCol }]}
+                      style={[styles.suggestChip, { backgroundColor: t.accentSoft, borderColor: borderCol }]}
                     >
                       <Ionicons name="bulb-outline" size={12} color={primary} style={styles.suggestIcon} />
                       <Text style={[styles.suggestText, { color: textColor }]}>{s.name}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               </View>
@@ -299,7 +303,7 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
               <TextInput
                 style={inputStyle(isNameFocused)}
                 placeholder="e.g. Meditate, Gym, Read"
-                placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                placeholderTextColor={placeholderColor}
                 value={name}
                 onChangeText={setName}
                 onFocus={() => setIsNameFocused(true)}
@@ -310,7 +314,7 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
             <Text style={[styles.labelMedium, { color: textMuted }]}>Category</Text>
             <View style={styles.categoryRow}>
               {allCategories.map((cat) => (
-                <TouchableOpacity
+                <Pressable
                   key={cat.value}
                   onPress={() => {
                     setCategory(cat.value);
@@ -321,24 +325,24 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
                   <Ionicons
                     name={cat.icon as any}
                     size={14}
-                    color={(category === cat.value && !isCustomMode ? (isDark ? '#090514' : 'white') : textMuted) as string}
+                    color={(category === cat.value && !isCustomMode ? primaryText : textMuted) as string}
                     style={styles.chipIcon}
                   />
                   <Text style={chipTextStyle(category === cat.value && !isCustomMode)}>{cat.label}</Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
-              <TouchableOpacity
+              <Pressable
                 onPress={() => setIsCustomMode(true)}
                 style={chipStyle(isCustomMode)}
               >
                 <Ionicons
                   name="add-circle-outline"
                   size={14}
-                  color={(isCustomMode ? (isDark ? '#090514' : 'white') : textMuted) as string}
+                  color={(isCustomMode ? primaryText : textMuted) as string}
                   style={styles.chipIcon}
                 />
                 <Text style={chipTextStyle(isCustomMode)}>Custom</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {isCustomMode && (
@@ -347,7 +351,7 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
                 <TextInput
                   style={inputStyle(isCustomFocused)}
                   placeholder="e.g. Spirituality"
-                  placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                  placeholderTextColor={placeholderColor}
                   value={customCategoryName}
                   onChangeText={setCustomCategoryName}
                   onFocus={() => setIsCustomFocused(true)}
@@ -359,13 +363,13 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
             <Text style={[styles.labelMedium, { color: textMuted }]}>Frequency</Text>
             <View style={styles.frequencyRow}>
               {FREQUENCIES.map((f) => (
-                <TouchableOpacity
+                <Pressable
                   key={f.key}
                   onPress={() => setFrequency(f.key as any)}
                   style={freqStyle(frequency === f.key)}
                 >
                   <Text style={freqTextStyle(frequency === f.key)}>{f.label}</Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
 
@@ -386,7 +390,7 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
                 <TextInput
                   style={inputStyle(isUnitFocused)}
                   placeholder="minutes, glasses, pages"
-                  placeholderTextColor={isDark ? '#475569' : '#94a3b8'}
+                  placeholderTextColor={placeholderColor}
                   value={unit}
                   onChangeText={setUnit}
                   onFocus={() => setIsUnitFocused(true)}
@@ -408,11 +412,11 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
                 value={reminderEnabled}
                 onValueChange={(v) => setReminderEnabled(v)}
                 trackColor={{ false: borderCol, true: primary }}
-                thumbColor={reminderEnabled ? (isDark ? '#090514' : '#ffffff') : '#ffffff'}
+                thumbColor={reminderEnabled ? primaryText : '#ffffff'}
               />
             </View>
             {reminderEnabled && (
-              <View style={[styles.timePicker, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc' }]}>
+              <View style={[styles.timePicker, { backgroundColor: t.cardAlt }]}>
                 <TimeColumn
                   label="Hour"
                   value={String(displayHour)}
@@ -431,33 +435,31 @@ export default function HabitForm({ isVisible, onClose, habit }: HabitFormProps)
                   primary={primary}
                 />
                 <View style={styles.ampmCol}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
+                  <Pressable
                     onPress={() => setPeriod('AM')}
                     style={[styles.ampmBtn, ampm === 'AM' && { backgroundColor: primary }]}
                   >
                     <Text style={[styles.ampmText, { color: ampm === 'AM' ? primaryText : textMuted }]}>AM</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
+                  </Pressable>
+                  <Pressable
                     onPress={() => setPeriod('PM')}
                     style={[styles.ampmBtn, ampm === 'PM' && { backgroundColor: primary }]}
                   >
                     <Text style={[styles.ampmText, { color: ampm === 'PM' ? primaryText : textMuted }]}>PM</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               </View>
             )}
             </View>
 
             <View style={styles.saveWrap}>
-              <TouchableOpacity onPress={handleSave} activeOpacity={0.9}>
+              <Pressable onPress={handleSave}>
                 <View style={saveBtnStyle}>
                   <Text style={saveTextStyle}>
-                    {isEditing ? 'Save Changes' : 'Save System'}
+                    Save Habit
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </ScrollView>
         </View>
@@ -482,9 +484,9 @@ function TimeColumn({
   primary: string;
 }) {
   const stepBtn = (icon: string, onPress: () => void) => (
-    <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={styles.timeStepBtn}>
+    <Pressable onPress={onPress} style={styles.timeStepBtn}>
       <Ionicons name={icon as any} size={18} color={primary} />
-    </TouchableOpacity>
+    </Pressable>
   );
 
   return (
@@ -523,14 +525,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
+  headerTextCol: {
+    flex: 1,
+    marginLeft: 12,
+  },
   title: {
     fontSize: 20,
     fontWeight: '700',
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -677,8 +683,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timeStepBtn: {
-    width: 40,
-    height: 32,
+    width: 44,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },

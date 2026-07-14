@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable, useWindowDimensions, StyleSheet, Animated, Clipboard, Alert } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/userStore';
 import { useHabitStore } from '../../store/habitStore';
 import { usePredictionStore } from '../../store/predictionStore';
@@ -8,38 +8,33 @@ import { fetchPredictionFromGemini } from '../../lib/geminiApi';
 import { buildPredictionPrompt } from '../../lib/predictions';
 import { getApiKey } from '../../lib/secureStore';
 import PredictionCard from '../../components/PredictionCard';
+import BrandGlyph from '../../components/BrandGlyph';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, tintedDark } from '../../constants/colors';
+import { useAppTheme } from '../../lib/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
-const TIMEFRAME_OPTIONS = [
-  '1 Week', '1 Month', '3 Month', '6 Month', '1 Year', '3 Year', '5 Year',
-];
+const TIMEFRAMES = ['1M', '6M', '1Y', '5Y', '10Y'];
 
 export default function PredictionScreen() {
   const { profile } = useUserStore();
   const { habits } = useHabitStore();
-  const { prediction, setPrediction, timeframe, setTimeframe } = usePredictionStore();
+  const { prediction, setPrediction, timeframe, setTimeframe, saveToHistory, history, loadFromHistory } = usePredictionStore();
   const router = useRouter();
+  const t = useAppTheme();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const pad = Math.max(20, width * 0.06);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
-
-  const isDark = profile.theme === 'dark';
-  const primary = isDark ? '#f8fafc' : (profile.primaryColor || COLORS.primary);
-  const accent = isDark ? '#f8fafc' : (profile.accentColor || COLORS.accent);
-  const primaryText = isDark ? '#090514' : '#ffffff';
-  const pad = Math.max(20, width * 0.06);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       getApiKey().then((key) => {
-        if (active) setHasApiKey(!!key.trim());
+        if (active) setHasApiKey(!!key?.trim());
       });
       return () => {
         active = false;
@@ -49,13 +44,11 @@ export default function PredictionScreen() {
 
   const generatePrediction = async () => {
     if (habits.length === 0) return;
-
     const key = await getApiKey();
-    if (!key.trim()) {
+    if (!key?.trim()) {
       setError('Add your Gemini API key first in Profile → Gemini AI.');
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
@@ -69,50 +62,25 @@ export default function PredictionScreen() {
     }
   };
 
-  const accentBase = profile.primaryColor || COLORS.primary;
-  const bg = isDark ? tintedDark(accentBase, 0.05) : COLORS.background.light;
-  const cardBg = isDark ? tintedDark(accentBase, 0.12) : '#ffffff';
-  const borderCol = isDark ? COLORS.border.dark : COLORS.border.light;
-  const textColor = isDark ? 'white' : COLORS.text.light;
-  const textMuted = isDark ? COLORS.text.mutedDark : COLORS.text.mutedLight;
+  const shareForecast = () => {
+    if (!prediction) return;
+    Clipboard.setString(`${prediction.report}\n\n— Your Future (${prediction.timeframe})`);
+    Alert.alert('Copied', 'Your forecast has been copied to the clipboard.');
+  };
 
-  const screenStyle = [styles.screen, { backgroundColor: bg }];
-  const scrollContent = [styles.scrollContent, { paddingHorizontal: pad }];
-  const emptyIconBoxStyle = [styles.emptyIconBox, { backgroundColor: `${accent}20` }];
-  const iconBtnStyle = [
-    styles.iconBtn,
-    { backgroundColor: loading ? (isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9') : primary },
-  ];
-  const dropdownTriggerStyle = [
-    styles.dropdownTrigger,
-    { backgroundColor: cardBg, borderColor: showDropdown ? primary : borderCol },
-  ];
-  const dropdownStyle = [
-    styles.dropdown,
-    { backgroundColor: cardBg, borderColor: borderCol },
-  ];
-  const retryBtnStyle = [styles.retryBtn, { backgroundColor: cardBg, borderColor: borderCol }];
-  const readyIconBoxStyle = [styles.readyIconBox, { backgroundColor: `${accent}20` }];
-  const generateBtnStyle = [styles.generateBtn, { backgroundColor: primary }];
-
-  const optionTextStyle = (option: string): object[] => [
-    styles.optionText,
-    {
-      color: timeframe === option ? primary : textColor,
-      fontWeight: timeframe === option ? '700' : '500',
-    },
-  ];
+  const card = [styles.card, { backgroundColor: t.card, borderColor: t.border }];
+  const emptyCard = [styles.card, styles.centerCard, { backgroundColor: t.card, borderColor: t.border }];
 
   if (habits.length === 0) {
     return (
-      <SafeAreaView style={screenStyle} edges={['top']}>
-        <View style={styles.emptyWrap}>
-          <View style={emptyIconBoxStyle}>
-            <Ionicons name="lock-closed" size={32} color={accent} />
+      <SafeAreaView style={[styles.screen, { backgroundColor: t.screenBg }]} edges={['top']}>
+        <View style={[styles.emptyWrap, { paddingHorizontal: pad }]}>
+          <View style={[styles.emptyIconBox, { backgroundColor: t.accentSoft }]}>
+            <Ionicons name="lock-closed" size={32} color={t.accent} />
           </View>
-          <Text style={[styles.emptyTitle, { color: textColor }]}>Prediction Locked</Text>
-          <Text style={[styles.emptyBody, { color: textMuted }]}>
-            Add at least one habit and track it so the AI can analyze your trajectory.
+          <Text style={[styles.emptyTitle, { color: t.text }]}>Prediction Locked</Text>
+          <Text style={[styles.emptyBody, { color: t.muted }]}>
+            Add at least one habit and track it so the AI can map your trajectory.
           </Text>
         </View>
       </SafeAreaView>
@@ -121,136 +89,126 @@ export default function PredictionScreen() {
 
   if (!hasApiKey) {
     return (
-      <SafeAreaView style={screenStyle} edges={['top']}>
-        <View style={styles.emptyWrap}>
-          <View style={emptyIconBoxStyle}>
-            <Ionicons name="key" size={32} color={accent} />
+      <SafeAreaView style={[styles.screen, { backgroundColor: t.screenBg }]} edges={['top']}>
+        <View style={[styles.emptyWrap, { paddingHorizontal: pad }]}>
+          <View style={[styles.emptyIconBox, { backgroundColor: t.accentSoft }]}>
+            <Ionicons name="key" size={32} color={t.accent} />
           </View>
-          <Text style={[styles.emptyTitle, { color: textColor }]}>Gemini API Key Required</Text>
-          <Text style={[styles.emptyBody, { color: textMuted }]}>
-            Add your Gemini API key in Profile to unlock AI-powered predictions.
+          <Text style={[styles.emptyTitle, { color: t.text }]}>Gemini API Key Required</Text>
+          <Text style={[styles.emptyBody, { color: t.muted }]}>
+            Add your Gemini API key in Profile to unlock AI-powered forecasts.
           </Text>
-          <TouchableOpacity
+          <Pressable
             onPress={() => router.push({ pathname: '/(tabs)/profile', params: { openGemini: 'true' } })}
-            activeOpacity={0.85}
           >
-            <View style={[styles.addKeyBtn, { backgroundColor: primary }]}>
-              <Ionicons name="sparkles" size={16} color={primaryText} />
-              <Text style={[styles.addKeyBtnText, { color: primaryText }]}>Add API Key</Text>
+            <View style={[styles.generateBtn, { backgroundColor: t.accent }]}>
+              <Ionicons name="sparkles" size={16} color={t.onAccent} />
+              <Text style={[styles.generateBtnText, { color: t.onAccent }]}>Add API Key</Text>
             </View>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
+  const showCard = prediction && prediction.timeframe === timeframe;
+
   return (
-    <SafeAreaView style={screenStyle} edges={['top']}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: t.screenBg }]} edges={['top']}>
       <ScrollView
-        contentContainerStyle={scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: pad, paddingBottom: 130 + insets.bottom }]}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerTextCol}>
-            <Text style={[styles.headerTitle, { color: textColor }]}>Future Forecast</Text>
-            <Text style={[styles.headerSubtitle, { color: textMuted }]}>AI-powered trajectory analysis.</Text>
+          <View style={styles.headerText}>
+            <Text style={[styles.headerTitle, { color: t.textOnBg }]}>Your Forecast</Text>
+            <Text style={[styles.headerSub, { color: t.mutedOnBg }]}>AI-powered trajectory</Text>
           </View>
-          <TouchableOpacity onPress={generatePrediction} disabled={loading} style={iconBtnStyle}>
-            {loading ? (
-              <ActivityIndicator color={primary} />
-            ) : (
-              <Ionicons name="refresh" size={20} color={primaryText} />
-            )}
-          </TouchableOpacity>
+          <BrandGlyph size={38} />
         </View>
 
-        {/* Timeframe Selector */}
-        <View style={styles.timeframeSection}>
-          <Text style={[styles.fieldLabel, { color: textMuted }]}>Select Horizon</Text>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={dropdownTriggerStyle}
-            onPress={() => setShowDropdown(!showDropdown)}
-          >
-            <Text style={[styles.dropdownValue, { color: textColor }]}>{timeframe}</Text>
-            <Ionicons
-              name={showDropdown ? 'chevron-up' : 'chevron-down'}
-              size={18}
-              color={textColor}
-            />
-          </TouchableOpacity>
-
-          {showDropdown && (
-            <View style={dropdownStyle}>
-              {TIMEFRAME_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={styles.optionRow}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    setTimeframe(option);
-                    setShowDropdown(false);
-                  }}
-                >
-                  <Text style={optionTextStyle(option)}>{option}</Text>
-                  {timeframe === option && (
-                    <Ionicons name="checkmark" size={16} color={primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+        {/* Timeframe segmented control */}
+        <View style={styles.segmentRow}>
+          {TIMEFRAMES.map((tf) => {
+            const sel = tf === timeframe;
+            return (
+              <Pressable
+                key={tf}
+                onPress={() => setTimeframe(tf)}
+                style={[
+                  styles.segment,
+                  { backgroundColor: sel ? t.accent : t.card, borderColor: sel ? 'transparent' : t.border },
+                ]}
+              >
+                <Text style={[styles.segmentText, { color: sel ? t.onAccent : t.muted, fontWeight: sel ? '700' : '600' }]}>
+                  {tf}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         {loading ? (
-          <View style={styles.stateWrap}>
-            <ActivityIndicator size="large" color={primary} style={styles.loadingIndicator} />
-            <Text style={[styles.stateTitle, { color: textColor }]}>
-              Analyzing patterns...
-            </Text>
-            <Text style={[styles.stateSub, { color: textMuted }]}>
-              Calculating your {timeframe.toLowerCase()} trajectory.
-            </Text>
-          </View>
+          <SkeletonCard />
         ) : error ? (
-          <View style={styles.stateWrap}>
-            <View style={styles.errorIconBox}>
-              <Ionicons name="cloud-offline" size={28} color="#f43f5e" />
+          <View style={[card, styles.centerCard]}>
+            <View style={[styles.emptyIconBox, { backgroundColor: 'rgba(244,63,94,0.12)' }]}>
+              <Ionicons name="cloud-offline" size={28} color={t.status.error} />
             </View>
-            <Text style={[styles.errorTitle, { color: textColor }]}>Failed to generate</Text>
-            <Text style={[styles.errorText, { color: textMuted }]}>{error}</Text>
-            <TouchableOpacity
-              onPress={generatePrediction}
-              activeOpacity={0.8}
-              style={retryBtnStyle}
-            >
-              <Text style={[styles.retryText, { color: textColor }]}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : prediction && prediction.timeframe === timeframe ? (
-          <View>
-            <PredictionCard data={prediction} />
-            <View style={styles.predictionFooter}>
-              <Text style={[styles.predictionFooterText, { color: textMuted }]}>
-                Generated: {new Date(prediction.generatedAt).toLocaleString()}
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.stateWrap}>
-            <View style={readyIconBoxStyle}>
-              <Ionicons name="sparkles" size={32} color={primary} />
-            </View>
-            <Text style={[styles.readyTitle, { color: textColor }]}>Ready to see your future?</Text>
-            <Text style={[styles.readyBody, { color: textMuted }]}>
-              Select a timeframe and tap generate.
-            </Text>
-            <TouchableOpacity onPress={generatePrediction} activeOpacity={0.85}>
-              <View style={generateBtnStyle}>
-                <Text style={[styles.generateBtnText, { color: primaryText }]}>Generate Prediction</Text>
+            <Text style={[styles.emptyTitle, { color: t.text }]}>Couldn&apos;t generate</Text>
+            <Text style={[styles.emptyBody, { color: t.muted, marginBottom: 18 }]}>{error}</Text>
+            <Pressable onPress={generatePrediction}>
+              <View style={[styles.generateBtn, { backgroundColor: t.accent }]}>
+                <Text style={[styles.generateBtnText, { color: t.onAccent }]}>Try Again</Text>
               </View>
-            </TouchableOpacity>
+            </Pressable>
+          </View>
+        ) : showCard ? (
+          <PredictionCard
+            data={prediction}
+            onShare={shareForecast}
+            onSaveToHistory={() => saveToHistory(prediction)}
+          />
+        ) : (
+          <Pressable onPress={generatePrediction} style={emptyCard}>
+            <BrandGlyph size={56} radius={16} />
+            <Text style={[styles.ctaTitle, { color: t.text }]}>See where you&apos;re headed</Text>
+            <Text style={[styles.ctaBody, { color: t.muted }]}>
+              Generate a {timeframe} forecast from your habit history.
+            </Text>
+            <View style={[styles.generateBtn, { backgroundColor: t.accent, marginTop: 18 }]}>
+              <Ionicons name="sparkles" size={16} color={t.onAccent} />
+              <Text style={[styles.generateBtnText, { color: t.onAccent }]}>Generate Forecast</Text>
+            </View>
+          </Pressable>
+        )}
+
+        {/* Previous forecasts */}
+        {history.length > 0 && (
+          <View style={styles.historyBlock}>
+            <Text style={[styles.historyTitle, { color: t.textOnBg }]}>Previous Forecasts</Text>
+            {history
+              .filter((p) => !(prediction && p.generatedAt === prediction.generatedAt))
+              .map((p) => (
+                <Pressable
+                  key={p.generatedAt}
+                  onPress={() => loadFromHistory(p.generatedAt)}
+                  style={[card, styles.historyRow]}
+                >
+                  <View style={[styles.badge, { backgroundColor: t.accent }]}>
+                    <Text style={[styles.badgeText, { color: t.onAccent }]}>{p.timeframe}</Text>
+                  </View>
+                  <View style={styles.historyMeta}>
+                    <Text style={[styles.historyDate, { color: t.text }]}>
+                      {new Date(p.generatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </Text>
+                    <Text style={[styles.historyScore, { color: t.muted }]}>Score {p.score}/100</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={t.muted} />
+                </Pressable>
+              ))}
           </View>
         )}
       </ScrollView>
@@ -258,19 +216,81 @@ export default function PredictionScreen() {
   );
 }
 
+function SkeletonCard() {
+  const t = useAppTheme();
+  const opacity = useRef(new Animated.Value(0.45)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.45, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [opacity]);
+
+  const bar = (w: string | number) => (
+    <Animated.View style={[styles.skel, { width: w as any, opacity, backgroundColor: t.border }]} />
+  );
+
+  return (
+    <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border }]}>
+      <View style={styles.skelHead}>
+        {bar(80)}
+        {bar(40)}
+      </View>
+      {bar('70%')}
+      <View style={{ height: 10 }} />
+      {bar('90%')}
+      <View style={{ height: 10 }} />
+      {bar('60%')}
+      <View style={{ height: 18 }} />
+      {bar('40%')}
+      <View style={{ height: 10 }} />
+      {bar('85%')}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
+  screen: { flex: 1 },
+  scrollContent: { paddingTop: 16 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
   },
-  scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 130,
+  headerText: { flex: 1 },
+  headerTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.6 },
+  headerSub: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+  segmentRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 18,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  segmentText: { fontSize: 13 },
+  card: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 22,
+  },
+  centerCard: {
+    alignItems: 'center',
+    paddingVertical: 36,
   },
   emptyWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
   },
   emptyIconBox: {
     width: 72,
@@ -278,185 +298,52 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyBody: {
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  addKeyBtn: {
+  emptyTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  emptyBody: { textAlign: 'center', fontSize: 14, lineHeight: 20 },
+  ctaTitle: { fontSize: 20, fontWeight: '800', marginTop: 18, textAlign: 'center' },
+  ctaBody: { textAlign: 'center', fontSize: 14, lineHeight: 20, marginTop: 8, paddingHorizontal: 10 },
+  generateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 24,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 14,
   },
-  addKeyBtnText: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerTextCol: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    marginTop: 2,
-    fontWeight: '500',
-    fontSize: 13,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timeframeSection: {
-    marginBottom: 24,
-    zIndex: 10,
-  },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  dropdownTrigger: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  dropdownValue: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  dropdown: {
-    position: 'absolute',
-    top: 72,
-    left: 0,
-    right: 0,
-    borderRadius: 14,
-    padding: 4,
-    zIndex: 100,
-    borderWidth: 1,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  optionText: {
-    fontSize: 14,
-  },
-  stateWrap: {
-    alignItems: 'center',
-    paddingTop: 48,
-  },
-  loadingIndicator: {
-    marginBottom: 16,
-  },
-  stateTitle: {
+  generateBtnText: { fontWeight: '700', fontSize: 15 },
+  historyBlock: { marginTop: 24 },
+  historyTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  stateSub: {
-    textAlign: 'center',
-    marginTop: 6,
-    fontSize: 13,
-  },
-  errorIconBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: 'rgba(244, 63, 94, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  errorTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  errorText: {
-    textAlign: 'center',
-    marginTop: 6,
-    marginBottom: 20,
-    fontSize: 13,
-  },
-  retryBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  retryText: {
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  readyIconBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  readyTitle: {
-    fontSize: 20,
     fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 12,
   },
-  readyBody: {
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  generateBtn: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 14,
+  historyRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 14,
+    marginBottom: 10,
   },
-  generateBtnText: {
-    fontWeight: '600',
-    fontSize: 15,
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
-  predictionFooter: {
-    alignItems: 'center',
-    marginTop: 4,
+  badgeText: { fontWeight: '800', fontSize: 11, letterSpacing: 1 },
+  historyMeta: { flex: 1, marginLeft: 14 },
+  historyDate: { fontSize: 14, fontWeight: '700' },
+  historyScore: { fontSize: 12, fontWeight: '500', marginTop: 2 },
+  skel: {
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    marginBottom: 4,
   },
-  predictionFooterText: {
-    fontSize: 11,
-    fontWeight: '500',
+  skelHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 18,
   },
 });

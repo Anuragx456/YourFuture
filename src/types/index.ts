@@ -29,6 +29,7 @@ export interface UserProfile {
   primaryColor: string;
   accentColor: string;
   geminiModel: string;
+  createdAt?: string;
 }
 
 export interface Prediction {
@@ -49,6 +50,8 @@ export interface HabitStore {
   deleteHabit: (id: string) => void;
   toggleCompletion: (id: string, date: string) => void;
   getStreak: (id: string) => number;
+  getUserStreak: () => number;
+  getMostConsistentHabit: () => string | null;
   clearHabits: () => void;
 }
 

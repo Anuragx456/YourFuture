@@ -1,14 +1,22 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import CustomTabBar from '../../components/CustomTabBar';
+import { useAppTheme } from '../../lib/theme';
 
 export default function TabsLayout() {
+  const t = useAppTheme();
+
   return (
     <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: t.accent,
+        tabBarInactiveTintColor: t.muted,
+        tabBarStyle: {
+          backgroundColor: t.card,
+          borderTopColor: t.borderOnBg,
+          borderTopWidth: 1,
+        },
       }}
     >
       <Tabs.Screen

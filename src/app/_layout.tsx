@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useUserStore } from '../store/userStore';
 import { COLORS } from '../constants/colors';
 
@@ -24,12 +25,14 @@ export default function RootLayout() {
   const navBg = isDark ? COLORS.background.dark : COLORS.background.light;
 
   return (
-    <View style={{ flex: 1, backgroundColor: navBg }}>
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: navBg } }}>
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-    </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: navBg }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: navBg } }}>
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+      </View>
+    </GestureHandlerRootView>
   );
 }
