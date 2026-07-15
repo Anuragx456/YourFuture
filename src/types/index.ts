@@ -28,7 +28,7 @@ export interface UserProfile {
   theme: 'light' | 'dark';
   primaryColor: string;
   accentColor: string;
-  geminiModel: string;
+  credits: number;
   createdAt?: string;
 }
 
@@ -61,5 +61,6 @@ export interface UserStore {
   completeOnboarding: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setPrimaryColor: (color: string) => void;
+  useCredit: () => void;
   clearData: () => void;
 }

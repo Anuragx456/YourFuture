@@ -11,7 +11,7 @@ describe('buildPredictionPrompt', () => {
     theme: 'light',
     primaryColor: '#E8622E',
     accentColor: '#f5a382',
-    geminiModel: 'gemini-2.5-flash',
+    credits: 5,
   };
 
   const baseHabit: Habit = {

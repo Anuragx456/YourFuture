@@ -1,73 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Switch, Alert, Modal, TextInput, useWindowDimensions, StyleSheet, Linking, DimensionValue } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, Switch, Alert, Modal, TextInput, useWindowDimensions, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/userStore';
 import { useHabitStore } from '../../store/habitStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { GOAL_OPTIONS, BAD_HABITS } from '../../constants/shared';
-import { getApiKey, saveApiKey, deleteApiKey } from '../../lib/secureStore';
 import { useAppTheme } from '../../lib/theme';
-
-const GEMINI_MODELS = [
-  { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite', desc: 'Lightweight, high volume' },
-  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', desc: 'Fast and balanced (default)' },
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Stable, fast, capable' },
-  { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', desc: 'Cheapest, high volume' },
-];
+import { useRouter } from 'expo-router';
+import { DimensionValue } from 'react-native';
 
 export default function ProfileScreen() {
-  const { profile, setTheme, setProfile, clearData } = useUserStore();
+  const { profile, setTheme, setProfile, clearData, useCredit } = useUserStore();
   const { habits, clearHabits } = useHabitStore();
   const t = useAppTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams();
   const pad = Math.max(20, width * 0.06);
 
   const [isGoalsModalVisible, setIsGoalsModalVisible] = useState(false);
   const [isStrugglesModalVisible, setIsStrugglesModalVisible] = useState(false);
-  const [isGeminiModalVisible, setIsGeminiModalVisible] = useState(false);
   const [tempSelectedGoals, setTempSelectedGoals] = useState<string[]>([]);
   const [tempBadHabits, setTempBadHabits] = useState<Record<string, string>>({});
-  const [apiKey, setApiKey] = useState('');
-  const [showKey, setShowKey] = useState(false);
-  const [tempModel, setTempModel] = useState(profile.geminiModel);
 
   const totalCompletions = habits.reduce((acc, h) => acc + Object.keys(h.completions).length, 0);
-
-  useEffect(() => {
-    if (params.openGemini === 'true') {
-      openGeminiModal();
-      router.setParams({ openGemini: undefined });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.openGemini]);
-
-  useEffect(() => {
-    getApiKey().then((key) => setApiKey(key ?? ''));
-  }, []);
-
-  const openGeminiModal = () => {
-    setTempModel(profile.geminiModel);
-    getApiKey().then((key) => setApiKey(key ?? ''));
-    setShowKey(false);
-    setIsGeminiModalVisible(true);
-  };
-
-  const saveGemini = async () => {
-    const trimmed = apiKey.trim();
-    if (trimmed) await saveApiKey(trimmed);
-    else await deleteApiKey();
-    setProfile({ geminiModel: tempModel });
-    setIsGeminiModalVisible(false);
-  };
-
-  const clearGeminiKey = async () => {
-    await deleteApiKey();
-    setApiKey('');
-  };
 
   const openGoalsModal = () => {
     setTempSelectedGoals([...profile.goals]);
@@ -173,22 +129,18 @@ export default function ProfileScreen() {
             />
           </View>
 
-          {/* Gemini */}
-          <Pressable
-            onPress={openGeminiModal}
-            style={[styles.row, { borderTopWidth: 1, borderTopColor: t.border }]}
-          >
+          {/* AI Credits */}
+          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: t.border }]}>
             <View style={styles.rowContent}>
               <View style={[styles.rowIcon, { backgroundColor: t.cardAlt }]}>
-                <Ionicons name="key" size={18} color={t.text} />
+                <Ionicons name="sparkles" size={18} color={t.text} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.rowLabel, { color: t.text }]}>Gemini API Key</Text>
-                <Text style={[styles.rowSub, { color: t.muted }]}>{apiKey ? 'Configured' : 'Not set'}</Text>
+                <Text style={[styles.rowLabel, { color: t.text }]}>AI Credits</Text>
+                <Text style={[styles.rowSub, { color: t.muted }]}>{Number.isFinite(profile.credits) ? profile.credits : 5} of 5 remaining</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={t.muted} />
-          </Pressable>
+          </View>
 
           {/* Goals */}
           <Pressable
@@ -303,66 +255,6 @@ export default function ProfileScreen() {
           </Sheet>
         </View>
       </Modal>
-
-      {/* Gemini Modal */}
-      <Modal visible={isGeminiModalVisible} animationType="slide" transparent>
-        <View style={styles.overlay}>
-          <Sheet backgroundColor={t.card}>
-            <Handle theme={t} />
-            <ModalHeader title="Gemini AI" onClose={() => setIsGeminiModalVisible(false)} theme={t} />
-            <Text style={[styles.modalSub, { color: t.muted }]}>Add your API key and choose a model. Stored locally on this device.</Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
-              <Text style={[styles.fieldLabel, { color: t.muted }]}>API Key</Text>
-              <View style={[styles.keyWrap, { backgroundColor: t.cardAlt, borderColor: t.border }]}>
-                <TextInput
-                  style={[styles.input, { flex: 1, backgroundColor: 'transparent', borderWidth: 0, color: t.text, paddingHorizontal: 0 }]}
-                  placeholder="Paste your Gemini API key"
-                  placeholderTextColor={t.muted}
-                  value={apiKey}
-                  secureTextEntry={!showKey}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  onChangeText={setApiKey}
-                />
-                <Pressable onPress={() => setShowKey((v) => !v)} style={styles.keyEye}>
-                  <Ionicons name={showKey ? 'eye-off' : 'eye'} size={18} color={t.muted} />
-                </Pressable>
-              </View>
-              <Pressable onPress={() => Linking.openURL('https://aistudio.google.com/api-keys')} style={styles.keyLink}>
-                <Ionicons name="open-outline" size={14} color={t.text} />
-                <Text style={[styles.keyLinkText, { color: t.text }]}>Get a Gemini API key</Text>
-              </Pressable>
-              {apiKey ? (
-                <Pressable onPress={clearGeminiKey}>
-                  <Text style={[styles.clearKeyText, { color: t.status.error }]}>Remove key</Text>
-                </Pressable>
-              ) : null}
-
-              <Text style={[styles.fieldLabel, { color: t.muted, marginTop: 20 }]}>Model</Text>
-              <View style={styles.modelList}>
-                {GEMINI_MODELS.map((model) => {
-                  const isSelected = tempModel === model.id;
-                  return (
-                    <Pressable key={model.id} onPress={() => setTempModel(model.id)} style={[styles.modelItem, { backgroundColor: t.cardAlt, borderColor: isSelected ? t.text : t.border, borderWidth: isSelected ? 2 : 1 }]}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.modelLabel, { color: isSelected ? t.text : t.text }]}>{model.label}</Text>
-                        <Text style={[styles.modelDesc, { color: t.muted }]}>{model.desc}</Text>
-                      </View>
-                      {isSelected && <Ionicons name="checkmark-circle" size={20} color={t.text} />}
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Pressable onPress={saveGemini} style={{ marginTop: 20 }}>
-                <View style={[styles.saveBtn, { backgroundColor: t.text }]}>
-                  <Text style={[styles.saveBtnText, { color: t.isDark ? t.screenBg : t.onAccent }]}>Save</Text>
-                </View>
-              </Pressable>
-            </ScrollView>
-          </Sheet>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -452,13 +344,6 @@ const styles = StyleSheet.create({
   },
   rowLabel: { fontSize: 15, fontWeight: '700' },
   rowSub: { fontSize: 12, fontWeight: '500', marginTop: 2 },
-  resetBtn: {
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  resetText: { fontWeight: '800', fontSize: 16 },
   version: { textAlign: 'center', fontSize: 11, fontWeight: '600', letterSpacing: 1 },
   // Modals
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
@@ -466,6 +351,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 8,
+    paddingHorizontal: 24,
     height: '70%',
   },
   handle: {
@@ -521,26 +407,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
   },
-  keyWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    height: 50,
-  },
-  keyEye: { padding: 6 },
-  keyLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, alignSelf: 'flex-start' },
-  keyLinkText: { fontWeight: '700', fontSize: 13 },
-  clearKeyText: { fontWeight: '700', fontSize: 13, marginTop: 8, alignSelf: 'flex-start' },
-  modelList: { gap: 8 },
-  modelItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 14,
-  },
-  modelLabel: { fontSize: 14, fontWeight: '700' },
-  modelDesc: { fontSize: 12, fontWeight: '500', marginTop: 2 },
 });

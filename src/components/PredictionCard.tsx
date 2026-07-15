@@ -8,6 +8,7 @@ interface PredictionCardProps {
   data: Prediction;
   onSaveToHistory?: () => void;
   onShare?: () => void;
+  isSaved?: boolean;
 }
 
 const TIMEFRAME_LABEL: Record<string, string> = {
@@ -31,7 +32,7 @@ function severity(text: string): 'low' | 'medium' | 'high' {
   return 'medium';
 }
 
-export default function PredictionCard({ data, onSaveToHistory, onShare }: PredictionCardProps) {
+export default function PredictionCard({ data, onSaveToHistory, onShare, isSaved }: PredictionCardProps) {
   const t = useAppTheme();
   const badge = TIMEFRAME_LABEL[data.timeframe] || data.timeframe.toUpperCase();
 
@@ -102,11 +103,16 @@ export default function PredictionCard({ data, onSaveToHistory, onShare }: Predi
         </View>
       )}
 
-      {onSaveToHistory && (
+      {isSaved ? (
+        <View style={[styles.saveBtn, { backgroundColor: t.cardAlt }]}>
+          <Ionicons name="checkmark-circle" size={18} color={t.accent} />
+          <Text style={[styles.saveText, { color: t.muted }]}>Saved to History</Text>
+        </View>
+      ) : onSaveToHistory ? (
         <Pressable onPress={onSaveToHistory} style={[styles.saveBtn, { backgroundColor: t.accent }]}>
           <Text style={[styles.saveText, { color: t.onAccent }]}>Save to History</Text>
         </Pressable>
-      )}
+      ) : null}
     </View>
   );
 }

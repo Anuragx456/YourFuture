@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, Pressable, Alert, useWindowDimensions, StyleSheet, TextInput } from 'react-native';
+import { View, Text, FlatList, Pressable, Alert, useWindowDimensions, StyleSheet, TextInput, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useHabitStore } from '../../store/habitStore';
@@ -183,7 +183,7 @@ function ScrollViewHorizontal({
   muted: string;
 }) {
   return (
-    <View style={styles.filterRow}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
       {filters.map((f) => {
         const sel = f.value === active;
         return (
@@ -204,7 +204,7 @@ function ScrollViewHorizontal({
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -243,10 +243,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingHorizontal: 17,
+    paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipText: { fontSize: 13 },
   listContent: { paddingBottom: 120 },

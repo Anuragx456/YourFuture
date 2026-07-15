@@ -1,13 +1,16 @@
 import { Prediction } from '../types';
 
-export async function fetchPredictionFromGemini(prompt: string, apiKey: string, model: string): Promise<Prediction> {
+export async function fetchPredictionFromGemini(prompt: string): Promise<Prediction> {
+  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+  const model = process.env.EXPO_PUBLIC_GEMINI_MODEL || 'gemini-2.5-flash';
+
   if (!apiKey) {
-    throw new Error('No Gemini API key set. Add your key in Profile → Gemini AI.');
+    throw new Error('Gemini API key is not configured. Set EXPO_PUBLIC_GEMINI_API_KEY in .env.');
   }
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {

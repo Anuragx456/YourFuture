@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, useWindowDimensions, StyleSheet, Animated, Clipboard, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/userStore';
@@ -6,21 +6,17 @@ import { useHabitStore } from '../../store/habitStore';
 import { usePredictionStore } from '../../store/predictionStore';
 import { fetchPredictionFromGemini } from '../../lib/geminiApi';
 import { buildPredictionPrompt } from '../../lib/predictions';
-import { getApiKey } from '../../lib/secureStore';
 import PredictionCard from '../../components/PredictionCard';
 import BrandGlyph from '../../components/BrandGlyph';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../lib/theme';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 
 const TIMEFRAMES = ['1M', '6M', '1Y', '5Y', '10Y'];
 
 export default function PredictionScreen() {
-  const { profile } = useUserStore();
+  const { profile, useCredit } = useUserStore();
   const { habits } = useHabitStore();
   const { prediction, setPrediction, timeframe, setTimeframe, saveToHistory, history, loadFromHistory } = usePredictionStore();
-  const router = useRouter();
   const t = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -28,32 +24,23 @@ export default function PredictionScreen() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasApiKey, setHasApiKey] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      getApiKey().then((key) => {
-        if (active) setHasApiKey(!!key?.trim());
-      });
-      return () => {
-        active = false;
-      };
-    }, [])
-  );
+  const credits = Number.isFinite(profile.credits) ? profile.credits : 5;
+  const canGenerate = credits > 0;
+  const isAlreadySaved = !!prediction && history.some((p) => p.generatedAt === prediction.generatedAt);
 
   const generatePrediction = async () => {
     if (habits.length === 0) return;
-    const key = await getApiKey();
-    if (!key?.trim()) {
-      setError('Add your Gemini API key first in Profile → Gemini AI.');
+    if (!canGenerate) {
+      setError('You\'ve used all your free AI credits.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const prompt = buildPredictionPrompt(profile, habits, timeframe);
-      const result = await fetchPredictionFromGemini(prompt, key, profile.geminiModel);
+      const result = await fetchPredictionFromGemini(prompt);
+      useCredit();
       setPrediction(result);
     } catch (err: any) {
       setError(err.message || 'Failed to generate prediction');
@@ -87,30 +74,6 @@ export default function PredictionScreen() {
     );
   }
 
-  if (!hasApiKey) {
-    return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: t.screenBg }]} edges={['top']}>
-        <View style={[styles.emptyWrap, { paddingHorizontal: pad }]}>
-          <View style={[styles.emptyIconBox, { backgroundColor: t.accentSoft }]}>
-            <Ionicons name="key" size={32} color={t.accent} />
-          </View>
-          <Text style={[styles.emptyTitle, { color: t.text }]}>Gemini API Key Required</Text>
-          <Text style={[styles.emptyBody, { color: t.muted }]}>
-            Add your Gemini API key in Profile to unlock AI-powered forecasts.
-          </Text>
-          <Pressable
-            onPress={() => router.push({ pathname: '/(tabs)/profile', params: { openGemini: 'true' } })}
-          >
-            <View style={[styles.generateBtn, { backgroundColor: t.accent }]}>
-              <Ionicons name="sparkles" size={16} color={t.onAccent} />
-              <Text style={[styles.generateBtnText, { color: t.onAccent }]}>Add API Key</Text>
-            </View>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const showCard = prediction && prediction.timeframe === timeframe;
 
   return (
@@ -126,7 +89,13 @@ export default function PredictionScreen() {
             <Text style={[styles.headerTitle, { color: t.textOnBg }]}>Your Forecast</Text>
             <Text style={[styles.headerSub, { color: t.mutedOnBg }]}>AI-powered trajectory</Text>
           </View>
-          <BrandGlyph size={38} />
+          <View style={styles.headerRight}>
+            <BrandGlyph size={38} />
+            <View style={[styles.creditBadge, { backgroundColor: t.accent }]}>
+              <Ionicons name="sparkles" size={12} color={t.onAccent} />
+              <Text style={[styles.creditBadgeText, { color: t.onAccent }]}>{credits}</Text>
+            </View>
+          </View>
         </View>
 
         {/* Timeframe segmented control */}
@@ -159,19 +128,22 @@ export default function PredictionScreen() {
             </View>
             <Text style={[styles.emptyTitle, { color: t.text }]}>Couldn&apos;t generate</Text>
             <Text style={[styles.emptyBody, { color: t.muted, marginBottom: 18 }]}>{error}</Text>
-            <Pressable onPress={generatePrediction}>
-              <View style={[styles.generateBtn, { backgroundColor: t.accent }]}>
-                <Text style={[styles.generateBtnText, { color: t.onAccent }]}>Try Again</Text>
-              </View>
-            </Pressable>
+            {canGenerate && (
+              <Pressable onPress={generatePrediction}>
+                <View style={[styles.generateBtn, { backgroundColor: t.accent }]}>
+                  <Text style={[styles.generateBtnText, { color: t.onAccent }]}>Try Again</Text>
+                </View>
+              </Pressable>
+            )}
           </View>
         ) : showCard ? (
           <PredictionCard
             data={prediction}
             onShare={shareForecast}
             onSaveToHistory={() => saveToHistory(prediction)}
+            isSaved={isAlreadySaved}
           />
-        ) : (
+        ) : canGenerate ? (
           <Pressable onPress={generatePrediction} style={emptyCard}>
             <BrandGlyph size={56} radius={16} />
             <Text style={[styles.ctaTitle, { color: t.text }]}>See where you&apos;re headed</Text>
@@ -183,6 +155,16 @@ export default function PredictionScreen() {
               <Text style={[styles.generateBtnText, { color: t.onAccent }]}>Generate Forecast</Text>
             </View>
           </Pressable>
+        ) : (
+          <View style={[card, styles.centerCard]}>
+            <View style={[styles.emptyIconBox, { backgroundColor: t.accentSoft }]}>
+              <Ionicons name="sparkles-outline" size={32} color={t.accent} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: t.text }]}>Out of Credits</Text>
+            <Text style={[styles.emptyBody, { color: t.muted }]}>
+              You've used all your free AI forecasts. More credits coming soon.
+            </Text>
+          </View>
         )}
 
         {/* Previous forecasts */}
@@ -265,6 +247,16 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   headerTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.6 },
   headerSub: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  creditBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  creditBadgeText: { fontWeight: '800', fontSize: 12 },
   segmentRow: {
     flexDirection: 'row',
     gap: 8,

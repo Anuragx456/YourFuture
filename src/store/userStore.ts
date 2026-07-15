@@ -20,7 +20,7 @@ const initialState: UserProfile = {
   theme: 'light',
   primaryColor: '#E8622E',
   accentColor: '#f5a382',
-  geminiModel: 'gemini-2.5-flash',
+  credits: 5,
 };
 
 export const useUserStore = create<UserStore>()(
@@ -51,11 +51,29 @@ export const useUserStore = create<UserStore>()(
             accentColor: ACCENT_MAP[color] || color + '90',
           },
         })),
+      useCredit: () =>
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            credits: Math.max(0, (Number.isFinite(state.profile.credits) ? state.profile.credits : 5) - 1),
+          },
+        })),
       clearData: () => set({ profile: initialState }),
     }),
     {
       name: 'user-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      merge: (persistedState: any, currentState: UserStore) => ({
+        ...currentState,
+        ...(persistedState as Partial<UserStore>),
+        profile: {
+          ...currentState.profile,
+          ...(persistedState?.profile ?? {}),
+          credits: Number.isFinite(persistedState?.profile?.credits)
+            ? persistedState.profile.credits
+            : currentState.profile.credits,
+        },
+      }),
     }
   )
 );

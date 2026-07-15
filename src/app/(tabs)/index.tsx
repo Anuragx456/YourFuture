@@ -39,17 +39,22 @@ export default function Dashboard() {
   const dailyQuote = getQuoteForToday();
 
   const barData = useMemo(() => {
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const dayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
     const data: { value: number; label: string; frontColor: string; gradientColor: string }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const sunday = new Date(now);
+    sunday.setDate(now.getDate() - now.getDay());
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
       const dateStr = d.toISOString().split('T')[0];
+      const isFuture = dateStr > todayStr;
+      const isToday = dateStr === todayStr;
       const count = habits.filter((h) => h.completions[dateStr]).length;
-      const isToday = i === 0;
       data.push({
-        value: count,
-        label: days[d.getDay()],
+        value: isFuture ? 0 : count,
+        label: dayLabels[i],
         frontColor: isToday ? t.accent : t.track,
         gradientColor: isToday ? t.accent : t.track,
       });
